@@ -3,8 +3,6 @@ Welcome to the WRO Future Engineers 2026 **Innovation Nation** Documentation! He
 IMAGE
 ## Introduction to our Team
 **Team Members:**
-Kyle Ho
-Chaitra Ayinampudi 
-Narasimha Yalamanchi
+Kyle Ho, Chaitra Ayinampudi, and Narasimha Yalamanchi
 
 
