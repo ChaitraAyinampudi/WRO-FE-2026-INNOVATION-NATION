@@ -2,25 +2,50 @@
 Welcome to the WRO Future Engineers 2026 **Innovation Nation** Documentation! Here you will find all the documentation, source code, images, and models related to our autonomous robot.
 
 (Innovation Nation Photo or sm)
+
 ## Our Team: 
+
 Team Innovation Nation: Kyle Ho, Chaitra Ayinampudi, and Narasimha Yalamanchi
-(IMAGE of 
+(Put more abt team)
+
+(IMAGE of us)
+
 ## Project Overview: 
+
 Stuff
+
 ## Mobility & Mechanical Design
+
 Stuff
+
 ### Our Robot:
+
 IMAGE of the robot 
-**Dimensions:** (put the width x height of our robot)
-**Weight:** (Put the weight of our robot)
-**Materials:**
-(Materials)
+
+**Dimensions:** 
+
+(put the width x height of our robot)
+
+**Weight:** 
+
+(Put the weight of our robot)
+
 **Torque/speed:** 
+
 **Design trade-offs:**
-**Reason for chosen components:**
+
+### Materials:
+
+(Materials)
+
+(Include reasoning for materials): 
+
+### Reason for Chosen Components:
+
 (include testing or iterations affecting performance)
 
 ## Power & Sensor Architecture:
+
 **Power budget:**
  
 **Sensor trade-offs:** Include placement justified using field geometry; calibration method; failure point considerations; iteration evidence
@@ -61,7 +86,7 @@ State machine with rationale; algorithm justification (PID, CV, IMU, etc.); hand
 
 **Engineering Reasoning:**
 
-
+## Conclusion: 
 
 
 
