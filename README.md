@@ -40,8 +40,12 @@ Our top speed is 0.11Km/h (1.9 meters per minute)
 ##### 2 battery boxes (stores 2 each): 
 The battery holders and batteries are our power source for the robot; our holder has a switch to easily turn our robot on or off. Easy to take off or put on our robot.
 
+<img width="200" height="200" alt="image" src="https://github.com/user-attachments/assets/7e7b7fcf-63da-480c-abd1-865ac9a1874e" />
+
 ##### 4 TAKEN 18 x 67mm 3.7V lithium Rechargeable batteries: 
 Our robot inputs 16 Volts of power. Rechargeable batteries for long-term use.
+
+<img width="200" height="200" alt="image" src="https://github.com/user-attachments/assets/43254a96-f6f6-43a4-adff-5c22065ee45a" />
 
 ##### DC/DC Converter:
 DC/DC Converter to give power to our Raspberry Pi, U2D2 controller, and Pi Pico.
@@ -53,6 +57,9 @@ U2D2 Controller so that our Raspberry Pi can control our DYNAMIXEL motors
 
 ##### 2 DYNAMIXEL XL330-M288-T Motors:
 XL330-M288-T motors since it's a fast, reliable digital motors.
+
+<img width="250" height="250" alt="image" src="https://github.com/user-attachments/assets/139d5b1b-f1a3-46ba-8864-4f0d229e2664" />
+
 
 ##### Raspberry Pi 4 Model B:
 Raspberry Pi 4 Model B since it's a reliable and cost-effective computer.
@@ -130,7 +137,7 @@ Estimated Total Hardware Cost: ≈ $325 USD
 Stuff
 
 ### Code structure:
-State machine with rationale; algorithm justification (PID, CV, IMU, etc.); handling edge cases; testing/tuning process; metrics used to validate performance
+State machine with rationale; algorithm justification (PID, CV, IMU, etc.); handling edge cases; testing/tuning process; metrics used to validate performance. 
 
 **Modules:**
 
