@@ -52,7 +52,7 @@ DC/DC Converter to give power to our Raspberry Pi, U2D2 controller, and Pi Pico.
 U2D2 Controller so that our Raspberry Pi can control our DYNAMIXEL motors
 
 ##### 2 DYNAMIXEL XL330-M288-T Motors:
-XL330-M288-T motors since it's a fast, reliable digital motor
+XL330-M288-T motors since it's a fast, reliable digital motors.
 
 ##### Raspberry Pi 4 Model B:
 Raspberry Pi 4 Model B since it's a reliable and cost-effective computer.
@@ -61,7 +61,7 @@ Raspberry Pi 4 Model B since it's a reliable and cost-effective computer.
 Sense HAT to use their LED to print which model will be run during rounds; the joystick is used to select and run a model.
 
 ##### Raspberry Pi Pico:
-Pi Pico to control our ToF sensors and IMU Sensor without using the Raspberry Pi too much.
+Pi Pico controls our ToF sensors and IMU Sensor without using the Raspberry Pi too much.
 
 ##### 4 VL53L0X ToF Sensors:
 The ToF Sensors calculate the distance between the robot, wall, and obstacles. We placed one in the front, one in the back, and two on the right side of the robot. We placed two on the right side to make the robot's distance and rotation (angle) more accurate. We also used ToF sensors as distance sensors for parking and finding the parking boundaries
@@ -83,6 +83,26 @@ Many of the wires to connect our battery holders to the DC/DC converter, and our
 
 #### LEGOs: 
 We used LEGOs as our base and to structure our robot. 
+
+#### Cost: 
+| Component                              | Quantity | Approx. Price Each |                           Total |
+| -------------------------------------- | :------: | -----------------: | ------------------------------: |
+| Battery Holder (2×18650 with switch)   |     2    |                 $3 |                          **$6** |
+| 18650 3.7V Rechargeable Batteries      |     4    |                 $6 |                         **$24** |
+| DC/DC Buck Converter                   |     1    |                 $8 |                          **$8** |
+| U2D2 Controller                        |     1    |                $33 |                         **$33** |
+| DYNAMIXEL XL330-M288-T Motors          |     2    |             $27.49 |                      **$54.98** |
+| Raspberry Pi 4 Model B (4 GB)          |     1    |                $60 |                         **$60** |
+| Raspberry Pi Sense HAT                 |     1    |                $33 |                         **$33** |
+| Raspberry Pi Pico                      |     1    |                 $4 |                          **$4** |
+| VL53L0X ToF Sensors                    |     4    |                 $5 |                         **$20** |
+| WT901 9-Axis IMU Sensor                |     1    |                $18 |                         **$18** |
+| Raspberry Pi Camera Module v1 (OV5647) |     1    |                $10 |                         **$10** |
+| USB-A to Micro-USB Cable               |     1    |                 $4 |                          **$4** |
+| USB-A to USB-C Cable                   |     1    |                 $5 |                          **$5** |
+| Additional Wires                       |    N/A   |                $10 |                         **$10** |
+| LEGO Pieces (estimated)                |    N/A   |             $20–50 |                        **≈$35** |
+Estimated Total Hardware Cost: ≈ $325 USD                                                            
 
 ### Reason for Chosen Components:
 
