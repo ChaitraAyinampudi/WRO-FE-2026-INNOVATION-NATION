@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""WRO 2026 recording and autonomous-driving controller.
+"""
 
 Modes:
     --recording            Record camera and PS4 control data
@@ -7,10 +7,6 @@ Modes:
     --driving-view         Run autonomous driving with a camera window
     --driving-skip         Run autonomous driving without the parking exit
     --driving-view-skip    Skip the parking exit and show the camera window
-
-The program supports DonkeyCar model driving, DYNAMIXEL steering and throttle,
-PS4 recording, camera preview, gyro-based stopping, and obstacle parking exit.
-"""
 
 # ---------------------------------------------------------------------------
 # Standard library
