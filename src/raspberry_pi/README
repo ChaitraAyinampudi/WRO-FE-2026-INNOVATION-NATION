@@ -90,3 +90,16 @@ pygame
 dynamixel-sdk
 sense-hat
 picamera
+
+### `parking.py`
+
+Program used to test parking.
+
+It uses:
+
+- DYNAMIXEL motors
+- Raspberry Pi Pico ToF serial data
+- VL53L0X sensors A, B, and C
+- A/B alignment before wall following
+- PID ToF wall following using A and B
+- A fixed parking-entry program.
