@@ -45,7 +45,8 @@ The battery holders and batteries are our power source for the robot; our holder
 ##### 4 TAKEN 18 x 67mm 3.7V lithium Rechargeable batteries: 
 Our robot inputs 16 Volts of power. Rechargeable batteries for long-term use.
 
-<img width="200" height="200" alt="image" src="https://github.com/user-attachments/assets/43254a96-f6f6-43a4-adff-5c22065ee45a" />
+<img width="200" height="200" alt="image" src="https://github.com/user-attachments/assets/1ad300cd-df51-41d6-ae28-875abdadc6d0" />
+
 
 ##### DC/DC Converter:
 DC/DC Converter to give power to our Raspberry Pi, U2D2 controller, and Pi Pico.
