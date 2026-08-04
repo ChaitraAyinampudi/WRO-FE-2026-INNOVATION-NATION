@@ -60,9 +60,10 @@ XL330-M288-T motors since it's a fast, reliable digital motors.
 
 <img width="250" height="250" alt="image" src="https://github.com/user-attachments/assets/139d5b1b-f1a3-46ba-8864-4f0d229e2664" />
 
-
 ##### Raspberry Pi 4 Model B:
 Raspberry Pi 4 Model B since it's a reliable and cost-effective computer.
+
+<img width="300" height="200" alt="image" src="https://github.com/user-attachments/assets/5a6db2f7-57f1-40a3-a503-edfa3f40d65b" />
 
 ##### Raspberry Pi Sense HAT:
 Sense HAT to use their LED to print which model will be run during rounds; the joystick is used to select and run a model.
