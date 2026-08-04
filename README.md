@@ -506,15 +506,195 @@ Entering a bay drops A while B still reads the wall, so a *difference* appears; 
 | Model calibration | The trained models compensate for whatever bias is in `DXL_STEER_CENTER_TICKS = 3060`, so it can't be corrected without retraining | Re-measure the mechanical center and retrain, as one combined change |
 
 
-## Systems Thinking & Engineering Decisions:
+# Systems Thinking & Engineering Decisions
 
-**Subsystem interactions**
+## Subsystem interactions
 
-**Constraints, Trade-offs, and Risk Analysis:***
+The car is five subsystems: power, compute, control, sensing, and structure. Each one only talks to its neighbors, which is what lets us change one without re-testing all of them.
 
-**Iteration cycles:**
+```
+POWER      4 rechargeable cells in 2 packs
+           holder with an on/off switch
+                    │
+                    ▼
+           DC/DC converter  (one regulated rail)
+                    │
+        ┌───────────┼───────────────┬──────────────────┐
+        ▼           ▼               ▼                  ▼
+COMPUTE  Raspberry Pi 4B      Pi Pico          U2D2 controller
+         camera, model,       ToF + IMU        USB ↔ DYNAMIXEL
+         mission, parking     reader           TTL bridge
+              │                   │                    │
+              │  USB↔microUSB     │                    │ USB↔USB-C
+              │  /dev/ttyACM0     │                    │ /dev/ttyUSB0
+              │  115200 baud      │                    │ 57600 baud
+              ├───────────────────┘                    │
+              │                                        │
+              │  Sense HAT (GPIO header)               │
+              │  LED matrix + joystick                 │
+              │                                        ▼
+SENSING   Pi Camera ──► Pi                    ACTUATION
+          3× VL53L0X ToF ──► Pico             ID 1  XL330-M288-T  drive
+          WT901 IMU ──────► Pico              ID 2  XL330-M288-T  steering
+                                                        │
+STRUCTURE  LEGO Technic chassis, steering linkage, sensor mounts
+```
 
-**Engineering Reasoning:**
+### What each part does and why it's there
+
+| Part | Role | Why this one |
+|---|---|---|
+| 4 rechargeable cells, 2 packs, switched holder | Power source | Rechargeable so we're not buying cells every test session. The holder's switch gives us one clean power cut, and the whole pack lifts off the car in seconds for charging. |
+| DC/DC converter | Regulated rail for everything downstream | Cell voltage sags as the pack drains. Regulating once means the Pi, Pico, and motors all see a steady voltage instead of a falling one. |
+| Raspberry Pi 4 Model B | Camera, trained model, mission sequence, parking | Enough compute to run a Keras model at 20 Hz, and cheap enough that a dead one isn't a season-ending problem. |
+| Raspberry Pi Pico | Reads the ToF sensors and IMU, publishes one frame over USB | Keeps sensor timing off the Pi. Yaw integration needs a strict 10 ms period, and the Pi can't promise that while running TensorFlow. |
+| U2D2 controller | USB-to-DYNAMIXEL TTL bridge | The only supported way for the Pi to speak DYNAMIXEL Protocol 2.0. |
+| 2× XL330-M288-T | ID 1 drives, ID 2 steers | Digital servos with position and velocity modes on one bus, so both motors run off a single cable and one library. |
+| 3× VL53L0X ToF | Parking: front wall, side wall, bay boundary | Millimeter-resolution short-range distance, which is what a 20 cm bay needs. |
+| WT901 IMU | Lap tracking, one lap ≈ 360° of yaw | Gives us a rotation measurement the camera can't. |
+| Pi Camera | Training data and live model input | Single sensor for lane keeping and pillar color at once. |
+| Sense HAT | LED matrix shows the selected model, joystick picks it | Wired model selection at the field, no keyboard and no wireless. |
+| LEGO Technic | Chassis, steering linkage, every sensor and board mount | Geometry changes in minutes with no machining and nothing to reprint. |
+
+<!-- Fill in before submission: cell chemistry, pack voltage, DC/DC output voltage and current rating, and the XL330-M288-T stall torque / no-load speed from the ROBOTIS e-manual. -->
+
+### Where subsystems are coupled
+
+These are the interactions that actually bit us, meaning a change on one side broke something on the other.
+
+| Coupling | How it shows up |
+|---|---|
+| Structure → model | A mechanical change to the steering linkage shifts where "straight" is, and the trained model has already learned to compensate for the old value. This is why we run two steering centers, `DXL_STEER_CENTER_TICKS = 3060` for the model and `PARKING_STEERING_CENTER_TICKS = 3126` for parking, instead of one "correct" number. Re-centering the model's value is a retraining job. |
+| Sensing rate → parking speed | The Pico does three blocking ToF reads at about 42 ms each, so the parking loop runs near 6.8 Hz, not the 20 Hz it was designed for. Distance traveled per correction sets tracking accuracy, so we cut `PARKING_FOLLOW_SPEED_PERCENT` from 100 to 55 rather than raising gains. |
+| One Pico, two consumers | The gyro stream and the parking rangefinders come from the same USB device. `_stop_sampling_and_release_pico()` has to stop the 100 Hz sampler thread and close the reader before `ParkingPicoToF` can open the port. |
+| Camera → venue | Locked exposure and white balance make the model reproducible, but they also tie it to the lighting we trained under, so we re-record a calibration dataset on site. |
+| Motor current → compute rail | Motors and boards share the DC/DC output, so a stall spike can sag the rail the Pi is running on. See the risk table. |
+| Structure stiffness → steering repeatability | LEGO Technic joints have play. Play means the same tick value doesn't always produce the same wheel angle, which the model reads as noise. |
+
+---
+
+## Constraints, Trade-offs, and Risk Analysis
+
+### Constraints
+
+| Constraint | Source | What it forced |
+|---|---|---|
+| ≤ 300 × 200 mm footprint, ≤ 300 mm tall, ≤ 1.5 kg | Rules | LEGO Technic and small servos keep us well under the weight limit without a custom frame. |
+| One driving axle, one steering actuator; differential drive prohibited | Rules | Exactly two motors: `DXL_THROTTLE_IDS = [1]` drives, `DXL_STEER_ID = 2` steers through a Technic linkage. |
+| No RF, Bluetooth, or WiFi during a round | Rules | The PS4 pad is a data-collection tool only. Model selection at the field goes through the Sense HAT joystick, which is on the GPIO header. |
+| 3 minutes per obstacle round | Rules | Everything has to fit in one time budget, including every timeout. Table below. |
+| 20 cm parking bay, parallel within 2 cm of wheel-distance variance | Rules | Camera and model can't hit that, so parking is five hand-written stages on ToF data. |
+| Driving direction randomized per round | Rules | Four trained models instead of one, chosen at startup. |
+| Limited build hours | Us | We spent them collecting training data rather than tuning a color-threshold pipeline. |
+| One shared USB serial port on the Pico | Our design | Sequenced handoff between the gyro reader and the parking reader. |
+
+### Time budget
+
+Startup and the Pico health check happen before the round starts, so they don't count. Everything below does. The worst-case column is the sum of the actual timeout constants, so it's the slowest run the software can physically produce.
+
+| Phase | Bounded by | Worst case |
+|---|---|---|
+| Parking exit | fixed encoder moves | ~3 s |
+| Model driving | `GYRO_IGNORE_STOP_UNTIL_SECONDS = 32.0` | 32 s |
+| Finish coast | `OBSTACLE_RUN_FINISH_SECONDS = 1.0` | 1 s |
+| Finish turn | `GYRO_OBSTACLE_FINISH_TIMEOUT_SECONDS = 15.0` | 15 s |
+| Stage 2, front wall | `PARKING_APPROACH_TIMEOUT = 12.0` | 12 s |
+| Stage 3, reverse arc | `PARKING_RUN_FOR_DEGREES_TIMEOUT = 15.0` | 15 s |
+| Stage 3B, alignment | `PARKING_AB_BALANCE_TIMEOUT = 15.0` | 15 s |
+| Stage 4, wall follow | `PARKING_FOLLOW_TIMEOUT = 30.0` | 30 s |
+| Stage 5, bay entry | fixed encoder moves | ~6 s |
+| **Total** | | **~129 s of 180 s** |
+
+That leaves about 50 seconds of margin even if every single stage times out, which is why the parking stages are allowed generous timeouts. A stage that gives up early is worth less to us than one that finishes slowly.
+
+<!-- Fill in before submission: measured wall-clock time for a clean obstacle run. -->
+
+### Trade-offs
+
+| Decision | What we gained | What we gave up |
+|---|---|---|
+| Learned lane following instead of geometric | No thresholds to re-tune on site, and no arbitration layer between lane keeping and pillar avoidance | We can't inspect or prove a steering decision, so correctness depends on dataset coverage |
+| Two processors instead of one | Strict 10 ms IMU sampling, and a sensor fault can't stall the drive loop | A second serial link to keep alive, and a whole class of USB and REPL failures to handle |
+| One file instead of a package | Every knob findable in one screen at the field | No module boundaries, and a 5,600-line file |
+| LEGO Technic instead of printed or machined parts | Geometry changes in minutes | Joint play, and a frame that loosens under vibration |
+| Locked camera exposure | The model sees the same pixel values in training and competition | No dynamic range headroom, and on-site re-recording is mandatory |
+| Four models instead of one | Each is sharper on less data | Four datasets to collect and four files to keep straight |
+| Generous parking timeouts | A slow stage still finishes and can still score | Slower worst-case runs |
+| Shared power rail | One pack, one switch, one converter | Motor current spikes reach the compute rail |
+
+### Risks
+
+| Risk | How it shows up | Mitigation | Residual |
+|---|---|---|---|
+| Motor stall sags the shared rail and resets the Pi | Run dies mid-lap, no log | DC/DC regulation, and only two small servos as load | Real. The rules recommend a separate motor battery and we haven't split it yet. Highest-priority hardware change. |
+| Pico stops streaming | No lap counting and no parking | Firmware never exits on a sensor fault. Three recovery layers: `free_pico_serial_port()`, `ensure_pico_streaming()` before the model loads, and in-reader escape with bounded reopen. LED blinks from both cores as a liveness check. | A dead Pico still costs us parking. The run does stop, because the stop is time-dominated. |
+| One ToF sensor drops out | Wall follow steers on a rotation that isn't there | Reconstruct the missing reading from the last known angle, decay it, scale the output to `0.6`, tighten the clamp to `12.0°` | Long dropouts degrade to distance-only following |
+| Venue lighting doesn't match training | Model drives badly from lap one | Locked exposure and white balance, plus on-site re-recording | If site lighting is far off, we need practice time to re-record |
+| LEGO joints loosen during a round | Steering center drifts, model accuracy falls | `angle_offset = 0.8` keeps the model out of the ±48° region where our linkage binds. Pre-round check of the steering linkage. | Drift within a round is not detected in software |
+| Stale REPL leaves `main.py` not running | Silent Pico, looks like a dead gyro | Ctrl-C, Ctrl-C, Ctrl-B, Ctrl-D escape sequence, and the raw-REPL banner is named in the log | Only fixable before the round, not during |
+| One bad sensor sample triggers a phase early | Car stops or parks in the wrong place | Every threshold is confirmed over multiple frames and a settling test, never a single sample | — |
+| Serial port held by a leftover process | Pi can't open the Pico | `fuser` check with a keyword allowlist; unknown processes are reported, not killed | Requires a human to close an unrecognized program |
+
+---
+
+## Iteration cycles
+
+We run four separate loops at different speeds, and keeping them separate is deliberate. A mechanical change shouldn't require a training run, and a gain change shouldn't require a rebuild.
+
+**Mechanical, minutes.** LEGO Technic is the whole reason this loop is fast. Changing the steering linkage, moving a sensor mount, or shifting the camera angle takes a few minutes and no fabrication. We rebuilt sensor mounts several times purely because the ToF sensors needed a better angle against the black walls, and none of those changes cost us a day.
+
+**Software, one change per version.** Every behavior change becomes a numbered version with the root cause written into the module docstring, so the file header reads as a list of diagnoses rather than features. Each new constant records the value that restores the old behavior, like `# Set to 1 for exact V44 stopping distance`, so at the field we can find which change broke something by editing constants, with no git and no laptop. Dead constants get labeled `NOT USED` with a note on what replaced them.
+
+**Bench debugging, separate from driving.** `pico_tool.py` exists because debugging the serial link during a driving run is miserable. `--monitor` shows live frames, `--fix` escapes a stuck REPL, `--calib` measures the A/B sensor offset. Being able to test the link without loading TensorFlow turned a ten-minute cycle into a ten-second one.
+
+**Standalone, then integrate.** Parking was developed as its own program before it went into `manage`. That let us run parking a hundred times without a lap in front of it, and the stage numbering in the integrated code still matches the standalone version's. The two steering-center values are a direct product of this: the standalone program's calibration was the one that parked reliably, so we brought its numbers over rather than trusting the model's.
+
+**Model, record and prune.** Drive, record, delete the bad parts, train, drive again. Triangle deletes the newest 100 records on the spot, so a botched lap never reaches training. Recording is gated on the mode being `"user"` and throttle above `0.05`, so a parked car can't teach the network to steer while stopped.
+
+Our tuning rule across all four loops is the same: run it, capture the log, find the number that explains what we saw, change one thing, write down the old value.
+
+---
+
+## Engineering Reasoning
+
+A few ideas came up over and over while we built this, and they explain some choices that look odd on their own.
+
+### Where we used the model and where we didn't
+
+This competition has two different kinds of problem in it, and it took us a while to see that.
+
+Driving a lap is fuzzy. There's no equation for how early to start a corner or how wide to swing around a green pillar, just better and worse answers, and a person can demonstrate a good one much faster than we can write one down. The inputs are fuzzy too, since the same corner looks different under different lighting. That fits a network trained on demonstration.
+
+Parking isn't fuzzy at all. The rules hand us a number: parallel within 2 cm of wheel-distance variance. That's a measurement, not a judgment call, and a network trained on 160×120 images has no way to hit it reliably. What that needs is a controller with a target, a gain, and a confirmation test.
+
+Splitting the run this way meant neither tool had to do something it's bad at. It also means the network never controls the car during a phase where a specific number has to be met: it doesn't decide when the run ends, where to stop, or how to park.
+
+### Why nothing quits on a fault
+
+Most of our lost runs weren't caused by bad control. They were caused by something quietly not running, and by our own code not telling us which thing.
+
+The clearest example is the rangefinder that failed to initialize and ended the whole Pico program. The Pico printed one fatal message and went silent, while the IMU thread on the other core kept working fine. From the Pi that looks exactly like a dead gyro, so we spent time debugging the IMU when the actual problem was a ToF sensor. Now a failed sensor reports `-1` with status `9` forever and the frame keeps flowing, so the log tells us which sensor is gone.
+
+We apply that everywhere now. A subsystem that can't do its job reports the fault as *data* instead of raising or exiting, and the layer above decides how to degrade. Failing to start the Pico's second core streams `Angle=0.00` rather than quitting, a frame the parser can't trust gets rejected and counted so we can watch the reject rate, and the onboard LED blinks from both cores so we can tell from across the pit table whether `main.py` is running.
+
+### Measure instead of guessing
+
+The run timer is the best example. It's tempting to scale it by speed setting, and we tried. At 90% the hand-timed value is 34.0 s, and dividing by the speed ratio predicts 30.6 s at 100%, but the real tuned value is 32.0 s. An 11% speed increase only bought a 6% time reduction, because throttle isn't pinned at full for a whole lap and cornering doesn't scale either. So auto-scaling is off and both measured pairs sit in a comment next to the constant.
+
+The harder part is being honest about measurements we already have. One version set the A/B sensor offset to `2.1` from two run-log numbers that agreed to two decimal places, which felt like solid evidence. Both numbers came from a pose the *aligner itself* had chosen, though, and the aligner's whole job is to drive those two readings equal, so neither one showed the car was actually parallel. They had also passed through a parser bug that biased values low. We put the offset back to `0.0` and turned off an integral term added on the same evidence.
+
+It's also why the controllers report statistics instead of just driving. A parking run prints tracking error, drift, steering distribution, degraded-frame share, and link integrity, then gives one ranked recommendation, since two symptoms with a shared cause would otherwise produce suggestions that contradict each other. Above 40% degraded frames it recommends nothing, because the data can't support a conclusion.
+
+### Picking things we could change later
+
+We're a small team on a fixed schedule, so how long a wrong decision takes to undo mattered a lot to us.
+
+That's most of why the chassis is LEGO Technic. A printed or machined frame would be stiffer and give us better steering repeatability, and we know that. But every geometry change would cost hours or days, and early on we didn't know what geometry we wanted. Technic let us try a linkage, drive it, and change it the same afternoon. We took joint play as the price and handled the consequence in software, where `angle_offset = 0.8` keeps the model from ever commanding the last few degrees of lock that our linkage binds on.
+
+The same thinking shows up in the code. No `PARKING_*` constant is read by the model path, so parking can be retuned between rounds without touching anything the model depends on, and every replacement constant records the value that restores the old behavior. Parking was built standalone first so we could test it a hundred times without driving a lap in front of it.
+
+It's also why the `PARKING_*_MM` names are still wrong. They hold centimeter values, since the Pico divides by ten and the Pi never converts back. The math is consistent so nothing misbehaves, and a half-finished rename across two closed-loop controllers is exactly the kind of change that silently breaks one of them. It's scheduled for the off-season with a replayed log to confirm nothing moved.
+
 
 ## Conclusion: 
 
