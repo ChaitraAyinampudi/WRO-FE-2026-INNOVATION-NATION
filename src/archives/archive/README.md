@@ -1,8 +1,8 @@
 # Archived Manage Programs
 
-This folder stores cleaned historical manage programs for the WRO 2026 Future Engineers robot.
+This folder stores old manage programs for 2026.
 
-The files were kept as separate versions so older behavior can be reviewed without mixing it into the main Raspberry Pi program.
+The files were kept as separate versions so older programs can be viewed.
 
 ## Included Files
 
@@ -21,15 +21,10 @@ The files were kept as separate versions so older behavior can be reviewed witho
 
 ## Missing Versions
 
-These versions were not included because the files were not available during cleanup:
+These versions were not included because the files were lost:
 
 - `manage26V2.py`
 - `manage26V3.py`
 - `manage26V4.py`
 - `manage26V10.py`
 
-## Notes
-
-- Comments and docstrings that referenced earlier versions were removed.
-- Runtime behavior was not intentionally changed.
-- Each cleaned file passed Python syntax compilation.
