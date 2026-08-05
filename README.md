@@ -1,13 +1,7 @@
 # WRO 2026 FUTURE ENGINEERS: INNOVATION NATION
 Welcome to the WRO Future Engineers 2026 **Innovation Nation** Documentation! Here you will find all the documentation, source code, images, and models related to our autonomous robot.
 
-(Innovation Nation Photo or sm)
-
-## Our Team: 
-
-Team Innovation Nation: Kyle Ho, Chaitra Ayinampudi, and Narasimha Yalamanchi
-
-(IMAGE of us)
+**Team Innovation Nation:** Kyle Ho, Chaitra Ayinampudi, and Narasimha Yalamanchi
 
 ## Project Overview: 
 
@@ -39,11 +33,6 @@ Our mechanical design changed a lot as our robot continued to evolve. Every chan
 
 <img width="180" height="200" alt="image" src="https://github.com/user-attachments/assets/741f510f-9b76-47c0-923b-10c1b931aa97" />
 <img width="250" height="180" alt="image" src="https://github.com/user-attachments/assets/e2659a40-2cba-4dc2-b350-7042dd4df3dd" />
-
-
-**Weight:** 
-
-(Put the weight of our robot)
 
 **Torque/speed:**
 Our top speed is 0.11Km/h (1.9 meters per minute).
@@ -153,7 +142,21 @@ Estimated Total Hardware Cost: ≈ $325 USD
 
 ### Reason for Chosen Components:
 
-(include testing or iterations affecting performance)
+- **Raspberry Pi:** We chose the Raspberry Pi because it has enough processing power to run our computer vision system and handle the main programming for our robot.
+
+- **Raspberry Pi Camera:** The camera allows our robot to see and analyze its surroundings, helping it recognize the course and make decisions while moving.
+
+- **Raspberry Pi Pico:** We used the Pico as a secondary controller to manage sensors and motor controls more efficiently, allowing the Raspberry Pi to focus on heavier tasks.
+
+- **Time-of-Flight (ToF) Sensors:** These sensors were chosen because they provide accurate distance measurements, helping our robot detect obstacles and improve its positioning.
+
+- **IMU Sensor:** We included an IMU to track the robot’s orientation and movement, which helps it make more accurate turns and corrections.
+
+- **LEGO Base and Structure:** We chose LEGOs because it is strong, reliable, and easy to modify when testing different designs and improvements.
+
+- **Rechargeable Batteries:** Rechargeable batteries provide a consistent power source and allow us to test our robot for longer periods without constantly replacing batteries.
+
+- **DC/DC Converter:** The converter helps regulate the voltage going to our components, making sure each part receives stable and safe power.
 
 # Power & Sensor Architecture
 
@@ -181,8 +184,6 @@ The U2D2 is a communication bridge, not a power distribution board. It converts 
 
 <!-- Confirm before submission: how motor power reaches the DYNAMIXEL chain — through a U2D2 Power Hub Board, or injected directly into the daisy chain. The diagram needs to show this correctly. -->
 
----
-
 ## Sensor trade-offs
 
 We use a camera, three ToF rangefinders, and a WT901 IMU because each one covers a part of the run the others can't.
@@ -195,9 +196,7 @@ Their real limitation showed up on the field, and it's specific: a VL53L0X sitti
 
 **WT901 IMU.** This gives us rotation, which neither the camera nor the rangefinders can. We use it to track how far the car has turned, since one lap of the mat works out to roughly 360 degrees of yaw. We integrate the gyro *rate* rather than reading the sensor's own yaw output, because that output depends on the magnetometer and the mat sits on a floor with an unknown amount of metal in it, next to other robots' motors.
 
-**How they get combined during a run.** Not by fusing them into one estimate. Each one owns a phase. The camera and model drive the three laps on their own. The IMU decides when those laps are done and runs the final heading correction. The ToF sensors take over completely for parking, and the model isn't in the loop at all by then. So the redundancy we get isn't a vote between sensors, it's that a bad camera round still parks correctly and a dead IMU still leaves us with a car that drives laps.
-
----
+**How they get combined during a run.** Not by fusing them into one estimate. Each one owns a phase. The camera and model drive the three laps on their own. The IMU decides when those laps are done and runs the final heading correction. The ToF sensors take over completely for parking, and the model isn't in the loop at all by then. So the redundancy we get isn't a vote between sensors; it's that a bad camera round still parks correctly and a dead IMU still leaves us with a car that drives laps.
 
 ## Wiring
 
