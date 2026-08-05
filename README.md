@@ -155,23 +155,127 @@ Estimated Total Hardware Cost: ≈ $325 USD
 
 (include testing or iterations affecting performance)
 
-## Power & Sensor Architecture:
+# Power & Sensor Architecture
 
-**Power budget:**
- 
-**Sensor trade-offs:** Include placement justified using field geometry; calibration method; failure point considerations; iteration evidence
+## Power budget
 
-**Diagrams:**
+Four rechargeable cells in two packs feed a DC/DC converter, and everything downstream runs off that one regulated rail: the Raspberry Pi 4B, the Pi Pico, and both DYNAMIXEL motors. The pack sits in a holder with an on/off switch, so we get one clean power cut and the whole thing lifts off the car in seconds for charging.
 
-**Wiring** 
+Regulating once instead of per-device is the reason the converter is there. Cell voltage sags as the pack drains, and without regulation every board would see that sag differently.
 
-**Current strategy:**
+| Load | What it draws for | Current |
+|---|---|---|
+| Raspberry Pi 4B | Camera capture, Keras model at 20 Hz, mission logic | <!-- measure --> |
+| Pi Pico | Three ToF sensors, WT901, USB streaming | <!-- measure --> |
+| XL330-M288-T ID 1 | Drive | <!-- measure, idle and stall --> |
+| XL330-M288-T ID 2 | Steering | <!-- measure, idle and stall --> |
+| Sense HAT | LED matrix, joystick | <!-- measure --> |
 
-**Sensor choices/placement:**
+<!-- Fill in before submission: cell chemistry, cell count per pack, pack voltage, DC/DC output voltage and current rating, measured current per load above, and estimated runtime per charge. The rubric asks for a power budget specifically, and right now this section names the loads without quantifying them. -->
 
-**Calibration:**
+The one thing we'd change here is rail separation. The rules recommend two batteries, one for the controller and one for the motors, and we're running both off the same converter output. A stall spike on either motor reaches the rail the Pi is on, and a Pi that browns out mid-lap takes the log with it. Splitting the motor supply is our highest-priority hardware change.
 
-**More Diagrams:**
+Motor power and signal wiring are routed apart from each other on the chassis to cut down on noise pickup and to make it obvious which harness is which when something needs tracing. That's a routing decision, though, not electrical isolation. The rail is still shared.
+
+The U2D2 is a communication bridge, not a power distribution board. It converts USB to the DYNAMIXEL TTL bus so the Pi can talk Protocol 2.0 to both motors over one daisy chain.
+
+<!-- Confirm before submission: how motor power reaches the DYNAMIXEL chain — through a U2D2 Power Hub Board, or injected directly into the daisy chain. The diagram needs to show this correctly. -->
+
+---
+
+## Sensor trade-offs
+
+We use a camera, three ToF rangefinders, and a WT901 IMU because each one covers a part of the run the others can't.
+
+**Camera.** One Pi Camera feeds a 160×120 crop to a trained convolutional network, which is what drives the laps. It's the only sensor that sees pillar color, and it's the only one that gives us any information about the track more than a meter or so ahead. The weakness is that its readings depend on lighting, so we lock exposure and white balance and re-record training data on site rather than trying to compensate in software.
+
+**ToF (VL53L0X).** Three of them handle everything that needs an actual distance: wall following, squaring up against a wall, and finding the parking bay. They report centimeters with a status byte, and the firmware only accepts readings between 20 and 1500 mm. Anything else comes back as `-1` with status `9`.
+
+Their real limitation showed up on the field, and it's specific: a VL53L0X sitting 35 to 45 degrees off a **black** wall often returns nothing at all, and every wall on this field is black. So single-sensor dropouts aren't a rare edge case for us, they're normal, and the parking code is built around that. When one side sensor drops out we reconstruct its reading from the last known angle rather than substituting a constant, decay that held angle, and cut the controller's authority while we're running on estimated data.
+
+**WT901 IMU.** This gives us rotation, which neither the camera nor the rangefinders can. We use it to track how far the car has turned, since one lap of the mat works out to roughly 360 degrees of yaw. We integrate the gyro *rate* rather than reading the sensor's own yaw output, because that output depends on the magnetometer and the mat sits on a floor with an unknown amount of metal in it, next to other robots' motors.
+
+**How they get combined during a run.** Not by fusing them into one estimate. Each one owns a phase. The camera and model drive the three laps on their own. The IMU decides when those laps are done and runs the final heading correction. The ToF sensors take over completely for parking, and the model isn't in the loop at all by then. So the redundancy we get isn't a vote between sensors, it's that a bad camera round still parks correctly and a dead IMU still leaves us with a car that drives laps.
+
+---
+
+## Wiring
+
+The Pi is the main computer. It talks to two devices over USB and one over the GPIO header.
+
+| Link | Cable | Port | Speed |
+|---|---|---|---|
+| Pi → Pico | USB to microUSB | `/dev/ttyACM0` | 115200 baud |
+| Pi → U2D2 | USB to USB-C | `/dev/ttyUSB0` | 57600 baud, Protocol 2.0 |
+| Pi → Sense HAT | GPIO header | — | — |
+
+The Pico owns both sensor buses, on separate I²C peripherals so a fault on one can't stall the other:
+
+| Bus | Pins | Devices |
+|---|---|---|
+| I²C0 | SDA GP4, SCL GP5 | WT901 IMU at `0x50`, sampled at 100 Hz on core1 |
+| I²C1 | SDA GP2, SCL GP3 | Three VL53L0X, read in sequence on core0 |
+
+All three rangefinders ship with the same factory address, `0x29`, so each one gets its own `XSHUT` line and we assign addresses at startup. `initialize_tof()` pulls every XSHUT low, brings one sensor up, confirms it answers at `0x29`, moves it to a private address, confirms the new address responds, then moves to the next.
+
+| Sensor | XSHUT | Address | Faces |
+|---|---|---|---|
+| A | GP18 | `0x2A` | Side wall, forward position |
+| B | GP19 | `0x2B` | Side wall, rear position |
+| C | GP20 | `0x2C` | Front |
+| (unused) | GP21 | — | Held off |
+
+On the motor side, `DXL_THROTTLE_IDS = [1]` is the drive motor and `DXL_STEER_ID = 2` is steering. Both are XL330-M288-T on the same TTL daisy chain behind the U2D2, so one cable and one library covers both.
+
+---
+
+## Sensor choices and placement
+
+Placement came from the field geometry and from what each measurement is for.
+
+**A and B, side-facing.** These are the reason we can tell rotation from distance. They sit at different points along the same side of the car, so their difference is proportional to how far the car is rotated relative to the wall, while their average is how far away it is. Two sensors instead of one is what makes squaring up against a wall possible at all, and the rules score parallelism to within 2 cm of wheel-distance variance, which a single distance reading can't measure.
+
+**C, front-facing.** Points along the direction of travel. Its job is the front-wall approach during parking, where the car drives forward until C reads a set distance and stops. That stop sets the reference for every parking stage after it.
+
+**WT901.** Mounted rigidly to the chassis. This matters more than it sounds: the sensor reports its own rotation, so any movement of the sensor relative to the car reads as the car turning. A loose IMU mount would show up as lap-counting error, and lap counting is what ends the run.
+
+**Camera.** Mounted high enough that the chassis doesn't block the useful part of the frame. We capture 176×132 and crop to 160×120, shifted 6 pixels up, which throws away the bottom rows. Those rows are mostly our own bumper and the mat directly in front of it, and they'd otherwise dominate the first layer of the network.
+
+---
+
+## Calibration
+
+We calibrate each sensor and actuator on its own before touching autonomous behavior, because a bad calibration and a bad control loop look identical on the track.
+
+**Steering.** We find the DYNAMIXEL position where the wheels point straight and measure the limits out from there. That center is `DXL_STEER_CENTER_TICKS = 3060`, and the software range is `±60°` on paper, though the `0.8` gain applied before the clamp means the model can only reach about `±48°` in practice. Parking uses its own center, `PARKING_STEERING_CENTER_TICKS = 3126` with a `0.7°` trim, and the two differ by around 6.5 degrees. Both can't be physically straight. We keep both because 3060 is what the models were trained against, so if it's biased the network already learned to compensate, and changing it without retraining would put the car off by the same amount in the other direction.
+
+**ToF.** We compare reported distance against a tape measure to a wall, and we test against the actual black wall material rather than a convenient white one, since that's where these sensors fail. We also count how often invalid readings come back at different approach angles, which is how we found the 35 to 45 degree blind spot.
+
+Two sensors reading the same wall also need to agree with each other. `pico_tool.py --calib` averages A and B over a few seconds and reports the difference. That offset matters more than it looks: the wall follower settles where the weighted error is zero, so a constant A/B mismatch turns into a constant standoff error of about 1.5 units per unit of mismatch. `PARKING_AB_OFFSET_MM` is currently `0.0`, and it stays there until someone sets the car parallel *by hand against the chassis edge* and measures it. An earlier value was taken from a pose the aligner itself had chosen, which is circular, since the aligner's whole job is to drive those two readings equal.
+
+**WT901.** The firmware spends `WT_CALIBRATION_SECONDS = 3.0` averaging the gyro's z-axis rate while the car sits still, then subtracts that bias for the rest of the run. Beyond that we compare commanded turns against measured ones, which is where the asymmetric scale correction came from: our unit over-reports one turn direction more than the other, so positive rates get scaled by `1.00621` and negative by `1.00007`. Bias also drifts with temperature over a three-minute round, so whenever the filtered rate stays under 1.0 °/s for 0.6 s the bias estimate slowly re-adapts.
+
+For drift specifically, we don't trust one number. `_print_integration_audit()` compares the Pico's own reported angle span against the Pi's independently integrated total and prints the gap as a percentage. Two measurements of the same rotation disagreeing is the only way to catch an integration error, since neither one can be checked alone.
+
+**Camera.** There are no detection thresholds to tune, because there's no threshold-based detection anywhere in our code. Calibration here means locking the imaging parameters so the network sees consistent pixel values: `iso = 100`, `shutter_speed = 15000` µs, fixed `awb_gains = (1.5, 1.2)`, and both `exposure_mode` and `awb_mode` off, after a `0.75 s` settle. When venue lighting differs from what we trained under, we re-record a dataset on site rather than adjusting anything in software.
+
+Most of these numbers changed several times during the season. Testing on the real field is what showed us where each sensor stops being reliable, and that's what pushed us toward giving each sensor its own phase of the run instead of leaning on any one of them the whole way through.
+
+---
+
+## Diagrams
+
+Diagrams live in the repository so they can be updated whenever wiring or sensor placement changes.
+
+| Diagram | File |
+|---|---|
+| Power distribution | [`docs/power-distribution.png`](docs/power-distribution.png) |
+| Complete electronics layout | [`docs/electronics-layout.png`](docs/electronics-layout.png) |
+| Sensor placement | [`docs/sensor-placement.png`](docs/sensor-placement.png) |
+| Pico sensor wiring | [`docs/pico-wiring.png`](docs/pico-wiring.png) |
+| DYNAMIXEL / U2D2 wiring | [`docs/dynamixel-wiring.png`](docs/dynamixel-wiring.png) |
+
+<!-- Replace these paths with the real filenames once the diagrams are committed. -->
 
 # Software Architecture & Obstacle Strategy
 
