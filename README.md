@@ -11,7 +11,13 @@ Team Innovation Nation: Kyle Ho, Chaitra Ayinampudi, and Narasimha Yalamanchi
 
 ## Project Overview: 
 
+The goal of our project was not just to build a robot that could complete the WRO Future Engineers challenge, but to build one that was reliable, adaptable, and easy to improve throughout the season. From the beginning, we approached the robot as a complete engineering system where every mechanical, electrical, and software decision affected the overall performance.
 
+Instead of relying on a single solution, we combined different approaches based on each one's strengths. Our neural network handles tasks that depend on visual decision-making, such as lane following and navigating around obstacles, while our sensor-based algorithms handle tasks that require much higher precision, including lap counting, stopping, and parking. Separating these responsibilities allowed us to improve each subsystem independently without affecting the rest of the robot.
+
+We continued to refine our design in our testing. We experimented with various sensor placements, modified our mechanical layout, acquired new training data, retrained our models, and rewrote parts of our code whenever we found a better solution. A lot of our progress came from problems we encountered during testing, which forced us to re-engineer parts of our hardware and software rather than just accepting the first solution that worked.
+
+This documentation describes the engineering decisions that led to our final robot, detailing the design process, testing, trade-offs, and iterations that have influenced each subsystem. We wanted to demonstrate how each improvement led to a more reliable autonomous vehicle, instead of only showing the final result.
 
 ## Mobility & Mechanical Design
 
