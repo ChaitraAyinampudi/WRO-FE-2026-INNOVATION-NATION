@@ -13,7 +13,7 @@ We continued to refine our design in our testing. We experimented with various s
 
 This documentation describes the engineering decisions that led to our final robot, detailing the design process, testing, trade-offs, and iterations that have influenced each subsystem. We wanted to demonstrate how each improvement led to a more reliable autonomous vehicle, instead of only showing the final result.
 
-## Mobility & Mechanical Design
+## Mobility & Mechanical Design:
 
 Our mechanical design changed a lot as our robot continued to evolve. Every change had a purpose, whether it was improving stability, making maintenance easier, or finding a better place for a sensor or component. Even small adjustments made a noticeable difference, so we were constantly refining our design as we tested. This section explains how our robot came together and the decisions that shaped our final build.
 
