@@ -40,6 +40,13 @@ Our top speed is 0.11Km/h (1.9 meters per minute).
 
 **Design trade-offs:**
 
+**Chassis size:**	We kept the chassis compact to improve maneuverability, while leaving enough room for our electronics and wiring.
+
+**Sensor placement:**	Sensors were positioned to maximize accuracy without making them difficult to access or adjust.
+
+**Weight distribution:**	Components were arranged to keep the robot balanced and improve stability while turning.
+
+**Structural design:**	We reinforced the chassis where needed while avoiding unnecessary weight.
 
 ### Materials:
 
@@ -158,7 +165,7 @@ Estimated Total Hardware Cost: ≈ $325 USD
 
 # Software Architecture & Obstacle Strategy
 
-Our software splits the job in two. Driving the lap is a neural network's job: staying in the lane, seeing a red or green pillar, picking a side to pass it on. Everything that has to be exact is hand-written code reading an IMU and three time-of-flight rangefinders: counting laps, ending the run in the right spot, reversing into a 20 cm bay parallel to the wall. A color-threshold pipeline needs re-tuning every time venue lighting changes, and a neural network has no idea it has turned exactly 360 degrees.
+Our software splits the job into two. Driving the lap is a neural network's job: staying in the lane, seeing a red or green pillar, picking a side to pass it on. Everything that has to be exact is hand-written code reading an IMU and three time-of-flight rangefinders: counting laps, ending the run in the right spot, reversing into a 20 cm bay parallel to the wall. A color-threshold pipeline needs re-tuning every time venue lighting changes, and a neural network has no idea it has turned exactly 360 degrees.
 
 The car runs two processors. A **Raspberry Pi Pico** does nothing but read sensors. It owns the WT901 IMU and the three VL53L0X rangefinders and publishes one text frame over USB. A **Raspberry Pi** runs the camera, the model, the mission sequence, the parking code, and the DYNAMIXEL bus. That way the Pi never blocks waiting on a sensor, and a broken sensor degrades the frame instead of stalling the drive loop.
 
