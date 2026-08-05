@@ -159,9 +159,9 @@ Estimated Total Hardware Cost: ≈ $325 USD
 
 - **DC/DC Converter:** The converter helps regulate the voltage going to our components, making sure each part receives stable and safe power.
 
-# Power & Sensor Architecture
+# Power & Sensor Architecture:
 
-## Power budget
+## Power budget:
 
 Four rechargeable cells in two packs feed a DC/DC converter, and everything downstream runs off that one regulated rail: the Raspberry Pi 4B, the Pi Pico, and both DYNAMIXEL motors. The pack sits in a holder with an on/off switch, so we get one clean power cut and the whole thing lifts off the car in seconds for charging.
 
@@ -185,21 +185,21 @@ The U2D2 is a communication bridge, not a power distribution board. It converts 
 
 <!-- Confirm before submission: how motor power reaches the DYNAMIXEL chain — through a U2D2 Power Hub Board, or injected directly into the daisy chain. The diagram needs to show this correctly. -->
 
-## Sensor trade-offs
+## Sensor trade-offs:
 
 We use a camera, three ToF rangefinders, and a WT901 IMU because each one covers a part of the run the others can't.
 
-**Camera.** One Pi Camera feeds a 160×120 crop to a trained convolutional network, which is what drives the laps. It's the only sensor that sees pillar color, and it's the only one that gives us any information about the track more than a meter or so ahead. The weakness is that its readings depend on lighting, so we lock exposure and white balance and re-record training data on site rather than trying to compensate in software.
+**Camera:** One Pi Camera feeds a 160×120 crop to a trained convolutional network, which is what drives the laps. It's the only sensor that sees pillar color, and it's the only one that gives us any information about the track more than a meter or so ahead. The weakness is that its readings depend on lighting, so we lock exposure and white balance and re-record training data on site rather than trying to compensate in software.
 
-**ToF (VL53L0X).** Three of them handle everything that needs an actual distance: wall following, squaring up against a wall, and finding the parking bay. They report centimeters with a status byte, and the firmware only accepts readings between 20 and 1500 mm. Anything else comes back as `-1` with status `9`.
+**ToF (VL53L0X):** Three of them handle everything that needs an actual distance: wall following, squaring up against a wall, and finding the parking bay. They report centimeters with a status byte, and the firmware only accepts readings between 20 and 1500 mm. Anything else comes back as `-1` with status `9`.
 
 Their real limitation showed up on the field, and it's specific: a VL53L0X sitting 35 to 45 degrees off a **black** wall often returns nothing at all, and every wall on this field is black. So single-sensor dropouts aren't a rare edge case for us, they're normal, and the parking code is built around that. When one side sensor drops out we reconstruct its reading from the last known angle rather than substituting a constant, decay that held angle, and cut the controller's authority while we're running on estimated data.
 
-**WT901 IMU.** This gives us rotation, which neither the camera nor the rangefinders can. We use it to track how far the car has turned, since one lap of the mat works out to roughly 360 degrees of yaw. We integrate the gyro *rate* rather than reading the sensor's own yaw output, because that output depends on the magnetometer and the mat sits on a floor with an unknown amount of metal in it, next to other robots' motors.
+**WT901 IMU:** This gives us rotation, which neither the camera nor the rangefinders can. We use it to track how far the car has turned, since one lap of the mat works out to roughly 360 degrees of yaw. We integrate the gyro *rate* rather than reading the sensor's own yaw output, because that output depends on the magnetometer and the mat sits on a floor with an unknown amount of metal in it, next to other robots' motors.
 
-**How they get combined during a run.** Not by fusing them into one estimate. Each one owns a phase. The camera and model drive the three laps on their own. The IMU decides when those laps are done and runs the final heading correction. The ToF sensors take over completely for parking, and the model isn't in the loop at all by then. So the redundancy we get isn't a vote between sensors; it's that a bad camera round still parks correctly and a dead IMU still leaves us with a car that drives laps.
+**How they get combined during a run:** Not by fusing them into one estimate. Each one owns a phase. The camera and model drive the three laps on their own. The IMU decides when those laps are done and runs the final heading correction. The ToF sensors take over completely for parking, and the model isn't in the loop at all by then. So the redundancy we get isn't a vote between sensors; it's that a bad camera round still parks correctly and a dead IMU still leaves us with a car that drives laps.
 
-## Wiring
+## Wiring:
 
 The Pi is the main computer. It talks to two devices over USB and one over the GPIO header.
 
@@ -229,41 +229,39 @@ On the motor side, `DXL_THROTTLE_IDS = [1]` is the drive motor and `DXL_STEER_ID
 
 ---
 
-## Sensor choices and placement
+## Sensor choices and placement:
 
 Placement came from the field geometry and from what each measurement is for.
 
-**A and B, side-facing.** These are the reason we can tell rotation from distance. They sit at different points along the same side of the car, so their difference is proportional to how far the car is rotated relative to the wall, while their average is how far away it is. Two sensors instead of one is what makes squaring up against a wall possible at all, and the rules score parallelism to within 2 cm of wheel-distance variance, which a single distance reading can't measure.
+**A and B, side-facing:** These are the reason we can tell rotation from distance. They sit at different points along the same side of the car, so their difference is proportional to how far the car is rotated relative to the wall, while their average is how far away it is. Two sensors instead of one is what makes squaring up against a wall possible at all, and the rules score parallelism to within 2 cm of wheel-distance variance, which a single distance reading can't measure.
 
-**C, front-facing.** Points along the direction of travel. Its job is the front-wall approach during parking, where the car drives forward until C reads a set distance and stops. That stop sets the reference for every parking stage after it.
+**C, front-facing:** Points along the direction of travel. Its job is the front-wall approach during parking, where the car drives forward until C reads a set distance and stops. That stop sets the reference for every parking stage after it.
 
-**WT901.** Mounted rigidly to the chassis. This matters more than it sounds: the sensor reports its own rotation, so any movement of the sensor relative to the car reads as the car turning. A loose IMU mount would show up as lap-counting error, and lap counting is what ends the run.
+**WT901:** Mounted rigidly to the chassis. This matters more than it sounds: the sensor reports its own rotation, so any movement of the sensor relative to the car reads as the car turning. A loose IMU mount would show up as lap-counting error, and lap counting is what ends the run.
 
-**Camera.** Mounted high enough that the chassis doesn't block the useful part of the frame. We capture 176×132 and crop to 160×120, shifted 6 pixels up, which throws away the bottom rows. Those rows are mostly our own bumper and the mat directly in front of it, and they'd otherwise dominate the first layer of the network.
+**Camera:** Mounted high enough that the chassis doesn't block the useful part of the frame. We capture 176×132 and crop to 160×120, shifted 6 pixels up, which throws away the bottom rows. Those rows are mostly our own bumper and the mat directly in front of it, and they'd otherwise dominate the first layer of the network.
 
----
 
-## Calibration
+## Calibration:
 
 We calibrate each sensor and actuator on its own before touching autonomous behavior, because a bad calibration and a bad control loop look identical on the track.
 
-**Steering.** We find the DYNAMIXEL position where the wheels point straight and measure the limits out from there. That center is `DXL_STEER_CENTER_TICKS = 3060`, and the software range is `±60°` on paper, though the `0.8` gain applied before the clamp means the model can only reach about `±48°` in practice. Parking uses its own center, `PARKING_STEERING_CENTER_TICKS = 3126` with a `0.7°` trim, and the two differ by around 6.5 degrees. Both can't be physically straight. We keep both because 3060 is what the models were trained against, so if it's biased the network already learned to compensate, and changing it without retraining would put the car off by the same amount in the other direction.
+**Steering:** We find the DYNAMIXEL position where the wheels point straight and measure the limits out from there. That center is `DXL_STEER_CENTER_TICKS = 3060`, and the software range is `±60°` on paper, though the `0.8` gain applied before the clamp means the model can only reach about `±48°` in practice. Parking uses its own center, `PARKING_STEERING_CENTER_TICKS = 3126` with a `0.7°` trim, and the two differ by around 6.5 degrees. Both can't be physically straight. We keep both because 3060 is what the models were trained against, so if it's biased the network already learned to compensate, and changing it without retraining would put the car off by the same amount in the other direction.
 
-**ToF.** We compare reported distance against a tape measure to a wall, and we test against the actual black wall material rather than a convenient white one, since that's where these sensors fail. We also count how often invalid readings come back at different approach angles, which is how we found the 35 to 45 degree blind spot.
+**ToF:** We compare reported distance against a tape measure to a wall, and we test against the actual black wall material rather than a convenient white one, since that's where these sensors fail. We also count how often invalid readings come back at different approach angles, which is how we found the 35 to 45 degree blind spot.
 
 Two sensors reading the same wall also need to agree with each other. `pico_tool.py --calib` averages A and B over a few seconds and reports the difference. That offset matters more than it looks: the wall follower settles where the weighted error is zero, so a constant A/B mismatch turns into a constant standoff error of about 1.5 units per unit of mismatch. `PARKING_AB_OFFSET_MM` is currently `0.0`, and it stays there until someone sets the car parallel *by hand against the chassis edge* and measures it. An earlier value was taken from a pose the aligner itself had chosen, which is circular, since the aligner's whole job is to drive those two readings equal.
 
-**WT901.** The firmware spends `WT_CALIBRATION_SECONDS = 3.0` averaging the gyro's z-axis rate while the car sits still, then subtracts that bias for the rest of the run. Beyond that we compare commanded turns against measured ones, which is where the asymmetric scale correction came from: our unit over-reports one turn direction more than the other, so positive rates get scaled by `1.00621` and negative by `1.00007`. Bias also drifts with temperature over a three-minute round, so whenever the filtered rate stays under 1.0 °/s for 0.6 s the bias estimate slowly re-adapts.
+**WT901:** The firmware spends `WT_CALIBRATION_SECONDS = 3.0` averaging the gyro's z-axis rate while the car sits still, then subtracts that bias for the rest of the run. Beyond that we compare commanded turns against measured ones, which is where the asymmetric scale correction came from: our unit over-reports one turn direction more than the other, so positive rates get scaled by `1.00621` and negative by `1.00007`. Bias also drifts with temperature over a three-minute round, so whenever the filtered rate stays under 1.0 °/s for 0.6 s the bias estimate slowly re-adapts.
 
 For drift specifically, we don't trust one number. `_print_integration_audit()` compares the Pico's own reported angle span against the Pi's independently integrated total and prints the gap as a percentage. Two measurements of the same rotation disagreeing is the only way to catch an integration error, since neither one can be checked alone.
 
-**Camera.** There are no detection thresholds to tune, because there's no threshold-based detection anywhere in our code. Calibration here means locking the imaging parameters so the network sees consistent pixel values: `iso = 100`, `shutter_speed = 15000` µs, fixed `awb_gains = (1.5, 1.2)`, and both `exposure_mode` and `awb_mode` off, after a `0.75 s` settle. When venue lighting differs from what we trained under, we re-record a dataset on site rather than adjusting anything in software.
+**Camera:** There are no detection thresholds to tune, because there's no threshold-based detection anywhere in our code. Calibration here means locking the imaging parameters so the network sees consistent pixel values: `iso = 100`, `shutter_speed = 15000` µs, fixed `awb_gains = (1.5, 1.2)`, and both `exposure_mode` and `awb_mode` off, after a `0.75 s` settle. When venue lighting differs from what we trained under, we re-record a dataset on site rather than adjusting anything in software.
 
 Most of these numbers changed several times during the season. Testing on the real field is what showed us where each sensor stops being reliable, and that's what pushed us toward giving each sensor its own phase of the run instead of leaning on any one of them the whole way through.
 
----
 
-## Diagrams
+## Diagrams:
 
 Diagrams live in the repository so they can be updated whenever wiring or sensor placement changes.
 
@@ -277,7 +275,7 @@ Diagrams live in the repository so they can be updated whenever wiring or sensor
 
 <!-- Replace these paths with the real filenames once the diagrams are committed. -->
 
-# Software Architecture & Obstacle Strategy
+# Software Architecture & Obstacle Strategy:
 
 Our software splits the job into two. Driving the lap is a neural network's job: staying in the lane, seeing a red or green pillar, picking a side to pass it on. Everything that has to be exact is hand-written code reading an IMU and three time-of-flight rangefinders: counting laps, ending the run in the right spot, reversing into a 20 cm bay parallel to the wall. A color-threshold pipeline needs re-tuning every time venue lighting changes, and a neural network has no idea it has turned exactly 360 degrees.
 
@@ -312,9 +310,9 @@ The car runs two processors. A **Raspberry Pi Pico** does nothing but read senso
 
 ---
 
-## Code structure
+## Code structure:
 
-### Repository layout
+### Repository layout:
 
 | Path | Role |
 |---|---|
@@ -329,7 +327,7 @@ On the robot, the last two live at `~/WRO_FE_2026/models/…` and `~/WRO_FE_2026
 
 `manage26V18.py` is one big file instead of a package. Almost every constant that changes behavior sits in one config block at the top, named in caps and grouped by subsystem: `DXL_*`, `GYRO_*`, `PICO_*`, `PARKING_*`. The PiCamera exposure and white-balance constants are the exception, in their own block further down. **No `PARKING_*` constant is read by the model-driving code, and no model constant is read by the parking code**, which is what lets us retune parking between rounds without invalidating a trained model.
 
-### Mission state machine
+### Mission state machine:
 
 The run is a straight line of phases with no way back, so a phase that fails can't be re-entered. Every phase either finishes or times out and hands control forward, still moving, in a worse but still working state.
 
@@ -349,7 +347,7 @@ The run is a straight line of phases with no way back, so a phase that fails can
 
 Those phase names are labels, not code. There's no enum: the sequence lives in booleans and timestamps on `GyroThreeLapController` (`stopped`, `finish_deadline`, `gyro_target_first_seen`, `finish_turn_done`), so the state isn't visible in one place. Turning it into a real enum is on our list at the end.
 
-**How the run actually ends.** Two things have to be true before the car stops. Integrated yaw has to pass `GYRO_TARGET_DEG = 360.0`, and at least `GYRO_IGNORE_STOP_UNTIL_SECONDS = 32.0` of wall-clock time has to have passed since the model took over. One lap of the mat adds up to roughly 360 degrees of turning, so at race speed the yaw condition is already satisfied during the first lap, and the lockout is what really decides when the run ends. The yaw target works as a sanity check: it stops the run from ending if the car has been pinned against a wall and hasn't been turning at all.
+**How the run actually ends:** Two things have to be true before the car stops. Integrated yaw has to pass `GYRO_TARGET_DEG = 360.0`, and at least `GYRO_IGNORE_STOP_UNTIL_SECONDS = 32.0` of wall-clock time has to have passed since the model took over. One lap of the mat adds up to roughly 360 degrees of turning, so at race speed the yaw condition is already satisfied during the first lap, and the lockout is what really decides when the run ends. The yaw target works as a sanity check: it stops the run from ending if the car has been pinned against a wall and hasn't been turning at all.
 
 We measured that timer separately for each speed setting: `34.0 s` at `MAX_SPEED_PERCENT = 90`, `32.0 s` at `100`. Dividing by the speed ratio predicts 30.6 s, so an 11% speed increase only bought a 6% time reduction. Throttle isn't pinned at full for a whole lap, and cornering doesn't scale with the setting either. So `GYRO_LOCKOUT_AUTO_SCALE_WITH_SPEED` is `False`, both measured pairs are in a comment next to the constant, and changing speed means re-timing on the track.
 
@@ -357,31 +355,31 @@ We measured that timer separately for each speed setting: `34.0 s` at `MAX_SPEED
 
 Raising the target to a real three-lap figure near 1080 degrees is the most useful change we have left. We kept the timer this season because it's the version we have track data for, and because a badly scaled yaw target ends the round in the wrong place and costs the whole parking score.
 
-**Everything gets confirmed before it acts.** Any of our sensors can hand us one bad sample, so no threshold fires on a single frame. The lap target holds for `GYRO_TARGET_CONFIRM_SECONDS = 0.20`. Parking-bay detection needs `PARKING_WALL_FIND_CONFIRM_READINGS = 2` frames in a row. Wall alignment needs three confirmations spanning at least `0.15 s`. A frame that fails resets the counter to zero.
+**Everything gets confirmed before it acts:** Any of our sensors can hand us one bad sample, so no threshold fires on a single frame. The lap target holds for `GYRO_TARGET_CONFIRM_SECONDS = 0.20`. Parking-bay detection needs `PARKING_WALL_FIND_CONFIRM_READINGS = 2` frames in a row. Wall alignment needs three confirmations spanning at least `0.15 s`. A frame that fails resets the counter to zero.
 
-### Handling edge cases
+### Handling edge cases:
 
 Almost every safety check here is there because something broke on the track first.
 
-**A dead sensor must not silence the stream.** In the first Pico firmware, a VL53L0X that didn't show up at `0x29` returned from `main()`. The Pico printed a fatal message and went quiet forever, even though the IMU thread on core1 was fine, and from the Pi that looks exactly like a dead gyro. Now each rangefinder initializes on its own. A failure marks that sensor missing, reports `-1` with status `9` from then on, and the frame keeps flowing. Failing to start core1 isn't fatal either: it retries once, then streams `Angle=0.00`.
+**A dead sensor must not silence the stream:** In the first Pico firmware, a VL53L0X that didn't show up at `0x29` returned from `main()`. The Pico printed a fatal message and went quiet forever, even though the IMU thread on core1 was fine, and from the Pi that looks exactly like a dead gyro. Now each rangefinder initializes on its own. A failure marks that sensor missing, reports `-1` with status `9` from then on, and the frame keeps flowing. Failing to start core1 isn't fatal either: it retries once, then streams `Angle=0.00`.
 
 **One byte from the host must not freeze a core.** The old command handler called `sys.stdin.readline()`, which blocks until a newline shows up, and a soft-reboot handshake sends bytes without one. `poll_usb_command()` now uses `select.select(..., 0)` and reads a character at a time.
 
-**Two cores printing must not corrupt a frame.** Core0 prints data frames and core1 prints IMU status. Without locking their output, interleaving mid-line, and the Pi sees things like `Angle=12.[WT901 READ ERROR 3]`. `send_line()` takes a `_thread.allocate_lock()`.
+**Two cores printing must not corrupt a frame:** Core0 prints data frames and core1 prints IMU status. Without locking their output, interleaving mid-line, and the Pi sees things like `Angle=12.[WT901 READ ERROR 3]`. `send_line()` takes a `_thread.allocate_lock()`.
 
-**The Pico can get stuck in a state that waiting won't fix.** Thonny, `mpremote`, `ampy` and `rshell` all drop MicroPython into its *raw* REPL to copy files. If one disconnects without cleaning up, the Pico stays there, silent until something writes to it, with `main.py` not running. Our recovery handshake sent Ctrl-C then Ctrl-D, which soft-reboots in the friendly REPL but only means "run the buffer" in the raw one, so it did nothing and the retry loop used up all its retries. One log line finally told us: `raw REPL; CTRL-B to exit`. The sequence is now Ctrl-C, Ctrl-C, **Ctrl-B**, Ctrl-D, and `PICO_RAW_REPL_MARKERS` makes the reader name that banner in the log instead of showing an unparsed line.
+**The Pico can get stuck in a state that waiting won't fix:** Thonny, `mpremote`, `ampy` and `rshell` all drop MicroPython into its *raw* REPL to copy files. If one disconnects without cleaning up, the Pico stays there, silent until something writes to it, with `main.py` not running. Our recovery handshake sent Ctrl-C then Ctrl-D, which soft-reboots in the friendly REPL but only means "run the buffer" in the raw one, so it did nothing and the retry loop used up all its retries. One log line finally told us: `raw REPL; CTRL-B to exit`. The sequence is now Ctrl-C, Ctrl-C, **Ctrl-B**, Ctrl-D, and `PICO_RAW_REPL_MARKERS` makes the reader name that banner in the log instead of showing an unparsed line.
 
-**Two more link faults.** MicroPython on the RP2040 gates all USB output on `tud_cdc_connected()`, which follows DTR, so an earlier version that de-asserted DTR after opening the port silently threw away every `print()`. We now force `dtr = True, rts = False` everywhere. Writing to a *healthy* streaming `main.py` is also harmful, because MicroPython buffers `\x04` as ordinary stdin data, so we listen for `PICO_GYRO_PASSIVE_LISTEN_SECONDS = 2.00` and only write if the port is definitely silent.
+**Two more link faults:** MicroPython on the RP2040 gates all USB output on `tud_cdc_connected()`, which follows DTR, so an earlier version that de-asserted DTR after opening the port silently threw away every `print()`. We now force `dtr = True, rts = False` everywhere. Writing to a *healthy* streaming `main.py` is also harmful, because MicroPython buffers `\x04` as ordinary stdin data, so we listen for `PICO_GYRO_PASSIVE_LISTEN_SECONDS = 2.00` and only write if the port is definitely silent.
 
-**Port contention.** A leftover Thonny or monitor session holding `/dev/ttyACM0` looks like a dead gyro. `free_pico_serial_port()` runs `fuser` and kills what's blocking the port, but only if the command line matches `PICO_SERIAL_SAFE_KILL_KEYWORDS` (thonny, mpremote, rshell, ampy, screen, minicom, picocom, our own tools, older `manage26V*` instances). Anything it doesn't recognize gets reported and left alone. `ensure_pico_streaming()` then runs the listen-escape-verify cycle up to `PICO_AUTO_FIX_MAX_ATTEMPTS = 3` times, *before* the camera and TensorFlow load, so a Pico reboot's 1.7 s of rangefinder startup overlaps the model load instead of adding to it.
+**Port contention:** A leftover Thonny or monitor session holding `/dev/ttyACM0` looks like a dead gyro. `free_pico_serial_port()` runs `fuser` and kills what's blocking the port, but only if the command line matches `PICO_SERIAL_SAFE_KILL_KEYWORDS` (thonny, mpremote, rshell, ampy, screen, minicom, picocom, our own tools, older `manage26V*` instances). Anything it doesn't recognize gets reported and left alone. `ensure_pico_streaming()` then runs the listen-escape-verify cycle up to `PICO_AUTO_FIX_MAX_ATTEMPTS = 3` times, *before* the camera and TensorFlow load, so a Pico reboot's 1.7 s of rangefinder startup overlaps the model load instead of adding to it.
 
-**One serial port, two consumers.** The parking rangefinders and the gyro stream come from the same Pico. Before parking starts, `_stop_sampling_and_release_pico()` stops the 100 Hz sampler thread, joins it, and closes the reader so `ParkingPicoToF` can take the port.
+**One serial port, two consumers:** The parking rangefinders and the gyro stream come from the same Pico. Before parking starts, `_stop_sampling_and_release_pico()` stops the 100 Hz sampler thread, joins it, and closes the reader so `ParkingPicoToF` can take the port.
 
-**Bad frames get rejected, not reinterpreted.** The parser reads both a labeled form (`A=50,AS=0,...`) and a bare positional form. On a damaged labeled line, the status numbers slid into the distance slots and produced readings that were wrong but believable, and biased low, which is the worst direction for a wall follower. The parser now only falls back to positional reading when the line has *no* labels at all, and every required field has to appear **exactly once** or the whole line is thrown out and counted. Fragments get reassembled with a 512-byte cap.
+**Bad frames get rejected, not reinterpreted:** The parser reads both a labeled form (`A=50,AS=0,...`) and a bare positional form. On a damaged labeled line, the status numbers slid into the distance slots and produced readings that were wrong but believable, and biased low, which is the worst direction for a wall follower. The parser now only falls back to positional reading when the line has *no* labels at all, and every required field has to appear **exactly once** or the whole line is thrown out and counted. Fragments get reassembled with a 512-byte cap.
 
-**Two steering centers, on purpose.** The model drives through `DXL_STEER_CENTER_TICKS = 3060`, parking uses `PARKING_STEERING_CENTER_TICKS = 3126` with a `0.7°` trim, and they're about 6.5 degrees apart. 3060 is the value the models were *trained against*, so if it's biased, the network already learned to compensate, and changing it without retraining would put the car off by the same amount the other way. The parking number came off the standalone parking program that parked reliably.
+**Two steering centers, on purpose:** The model drives through `DXL_STEER_CENTER_TICKS = 3060`, parking uses `PARKING_STEERING_CENTER_TICKS = 3126` with a `0.7°` trim, and they're about 6.5 degrees apart. 3060 is the value the models were *trained against*, so if it's biased, the network already learned to compensate, and changing it without retraining would put the car off by the same amount the other way. The parking number came off the standalone parking program that parked reliably.
 
-### Testing and tuning process
+### Testing and tuning process:
 
 The loop is: run it, capture the log, find the number that explains what we saw, change one thing, write down what the old value was. Every behavior change becomes a new version with the root cause written into the module docstring.
 
@@ -389,11 +387,11 @@ The wall follower and the aligner both looked like they were sending corrections
 
 The parking loop was designed assuming 20 Hz. The log measured the real rate at about **6.8 frames per second**, because the Pico does three blocking rangefinder reads at roughly 42 ms each, and that ceiling can't be lifted from the Pi. Distance traveled per correction is what sets tracking accuracy, so instead of chasing gains we cut the speed: `PARKING_FOLLOW_SPEED_PERCENT` from 100 to 55, alignment creep from 70 to 45, plus a second `25` fine phase.
 
-**We also revert changes when the evidence behind them doesn't hold up.** One version set the A/B sensor offset to `2.1` based on two run-log numbers that agreed to two decimal places. Both numbers came from a pose the *aligner itself had chosen*, and the aligner's whole job is to drive those two readings equal, so neither one showed the car was physically parallel. The readings also came through the parser bug above. In the same pass, we turned off an integral term added because of a drift measured from those same corrupted readings. `PARKING_AB_OFFSET_MM` is back at `0.0` until somebody sets the car parallel *by hand against the chassis edge* and runs `pico_tool.py --calib`.
+**We also revert changes when the evidence behind them doesn't hold up:** One version set the A/B sensor offset to `2.1` based on two run-log numbers that agreed to two decimal places. Both numbers came from a pose the *aligner itself had chosen*, and the aligner's whole job is to drive those two readings equal, so neither one showed the car was physically parallel. The readings also came through the parser bug above. In the same pass, we turned off an integral term added because of a drift measured from those same corrupted readings. `PARKING_AB_OFFSET_MM` is back at `0.0` until somebody sets the car parallel *by hand against the chassis edge* and runs `pico_tool.py --calib`.
 
 Every constant that replaced older behavior records the value that brings the old behavior back: `# Set MEDIAN_WINDOW=1 and SMOOTHING_ALPHA=1.0 for raw behavior`, `# Set to 1 for exact V44 stopping distance`. That way we can find which change broke something at the track by editing constants, with no git and no laptop. Dead constants are labeled `NOT USED` with a note on what replaced them.
 
-### Metrics used to validate performance
+### Metrics used to validate performance:
 
 `ParkingRunStats.report()` prints after every wall-follow stage:
 
@@ -414,9 +412,9 @@ Alignment reports its own number. Once balance confirms, the car centers the ste
 
 For the gyro, `_print_integration_audit()` compares the Pico's own angle span against the Pi's independently integrated total and prints the gap as a percentage. Above 2% points at the rate deadband throwing away real motion; below that it estimates sensor over-read against the 360-degree target.
 
----
 
-## Modules
+
+## Modules:
 
 | Module | File / class | Rate | Responsibility |
 |---|---|---|---|
@@ -431,19 +429,19 @@ For the gyro, `_print_integration_audit()` compares the Pico's own angle span ag
 | Parking control | `parking_balance_ab_backwards`, `parking_tof_run` | ~7 Hz | alignment and wall-follow closed loops |
 | Actuation | `DynamixelSteering`, `DynamixelThrottle`, `DynamixelBus` | 20 Hz | XL330 position and velocity control over one shared bus |
 
-### Sensor hub (Pico, `main.py`)
+### Sensor hub (Pico, `main.py`):
 
 The two cores are split by timing requirement. Yaw integration is only as good as its sample spacing, so it gets core1 to itself at a strict `WT_SAMPLE_PERIOD_MS = 10`. The rangefinders are slow no matter what, about 42 ms per read, so they get core0 where blocking costs nothing.
 
 All three rangefinders share I²C1 and would all answer at the factory address `0x29`. `initialize_tof()` brings them up one at a time: pull every `XSHUT` low, raise one, check the sensor appears at `0x29`, move it to a private address (`0x2A`, `0x2B`, `0x2C`), check the new address answers, move on. A fourth position on GP21 is held off. Distances go out in centimeters with a status byte: `0` for a reading inside `[20, 1500] mm`, `9` for out of range, a read error, or a sensor that never came up. Reporting a fault as data instead of raising an exception lets the Pi decide how to degrade.
 
-**One naming problem, since it will confuse anyone reading the source.** `read_tof_cm_status()` divides by ten before publishing, and nothing on the Pi converts back, so every `PARKING_*_MM` constant holds a **centimeter** value despite the suffix. The math is internally consistent, so only the names lie: the wall-follow standoff is 32 cm, and the alignment leeway is 1 cm. We use real units in this document and the rename is on the list at the end, deliberately not done mid-season.
+**One naming problem, since it will confuse anyone reading the source:** `read_tof_cm_status()` divides by ten before publishing, and nothing on the Pi converts back, so every `PARKING_*_MM` constant holds a **centimeter** value despite the suffix. The math is internally consistent, so only the names lie: the wall-follow standoff is 32 cm, and the alignment leeway is 1 cm. We use real units in this document and the rename is on the list at the end, deliberately not done mid-season.
 
 Yaw on core1 is more than integrating the gyro rate. Rate bias is the biggest error term in a MEMS gyro, so the thread spends `WT_CALIBRATION_SECONDS = 3.0` averaging `gz` while we hold the car still, then subtracts that bias. The de-biased rate goes through an EMA at `WT_EMA_ALPHA = 0.18`, then an asymmetric scale correction, `1.00621` for positive rates and `1.00007` for negative, because our unit over-reports one turn direction more than the other. Integration is trapezoidal, `yaw += 0.5 · (prev + current) · dt`, which halves the systematic error a rectangular sum builds up when the rate is changing. Any `dt` above `WT_DT_MAX_SECONDS = 0.05` is thrown out so a scheduling hiccup can't inject a false step. Whenever the filtered rate stays under `WT_STILL_THRESHOLD_DPS = 1.0` for `WT_STILL_HOLD_SECONDS = 0.6`, the bias estimate re-adapts at `WT_BIAS_ADAPT_ALPHA = 0.015`, since bias drifts with temperature over a three-minute round.
 
 `poll_usb_command()` drains the host link without blocking, and `handle_usb_command()` acts on complete lines, taking `restart` (hardware `reset()`) and `reset gyro`. The onboard LED blinks every 250 ms from both cores, so a dark LED means `main.py` isn't running and we can see that across the pit table.
 
-### Actuation
+### Actuation:
 
 Both XL330 servos share one `DynamixelBus` singleton over the U2D2, reference counted so the port closes once when the last part lets go. `DynamixelSteering` runs in position mode, `DynamixelThrottle` in velocity mode. `run_for_degrees()` uses extended position mode so a drive move can cross the single-turn boundary, and checks arrival within `RUN_FOR_DEGREES_TOLERANCE_TICKS = 15` (about 1.3 degrees), polling every 20 ms, with a timeout of the predicted duration plus a 3 s margin.
 
@@ -453,17 +451,17 @@ Throttle quantizes to 10% steps, which collapses anything under 0.05 to a true z
 
 ---
 
-## Lane Following
+## Lane Following:
 
 Lane following is **end-to-end behavioral cloning**. There's no edge detector, no color threshold, no Hough transform, and no explicit lane model anywhere in our code. A `KerasLinear` convolutional network takes the 160×120×3 RGB crop and outputs two numbers, steering and throttle, at the 20 Hz drive loop rate.
 
-### Why a learned controller
+### Why a learned controller:
 
 The hard part of this challenge isn't the geometry; it's that the track's *appearance* changes: venue lighting, shadows from spectators, glare on the mat, and black walls our rangefinders already struggle with. A threshold-based pipeline has to be re-tuned for all of that on site, and we chose to spend our build hours collecting data instead.
 
 Lane following and obstacle avoidance are also *the same decision*. A geometric wall follower plus a separate pillar-avoidance module needs an arbitration layer to pick a winner, and the two controllers disagree in exactly the situations that matter, like a pillar sitting near a corner. A single network that outputs one steering angle has no arbitration layer to get wrong.
 
-### Locking down the camera
+### Locking down the camera:
 
 A learned controller is only as stable as the images you feed it. `add_camera()` waits `0.75 s` for the sensor to settle, then turns off every automatic behavior: `exposure_mode = 'off'`, `awb_mode = 'off'`, `iso = 100`, `shutter_speed = 15000` µs, `exposure_compensation = 0`, and fixed `awb_gains = (1.5, 1.2)`.
 
@@ -471,7 +469,7 @@ With auto-exposure on, driving from a bright straight into a shadowed corner cha
 
 `center_crop()` takes a 160×120 window, centered horizontally and shifted **6 pixels up** (`y0 = (h - th) // 2 - 6`). At our 176×132 capture, that puts the crop at the top of the frame and throws away the bottom rows, which are mostly our own chassis and the mat right in front of the bumper. `KerasLinear` is built with `input_shape = (120, 160, 3)`, so changing the crop invalidates every model we've trained.
 
-### Direction-specific models
+### Direction-specific models:
 
 We ship **four** models instead of one:
 
@@ -484,7 +482,7 @@ We ship **four** models instead of one:
 
 Driving direction is randomized per round, so both have to work. One direction-agnostic network would need roughly twice the data, since it would have to learn the mirror symmetry we already know for free. Direction is announced before the round, so picking a model is a startup decision: `--drive-mode FCW|FCCW|OCW|OCCW`, or a Sense HAT joystick pick (left, right, up, down, middle to confirm) when we're running without a keyboard. Passing `--model` works too, and the mode gets inferred from the path by substring match, testing `occw` and `fccw` before `ocw` and `fcw` so a counter-clockwise path can't be misread.
 
-### Data collection
+### Data collection:
 
 Recording mode (`--recording`) builds a different part graph: camera and crop, a live preview window, a PS4 controller, both actuators, and a DonkeyCar `TubWriter`. Steering comes from pygame axis 0 (left stick X) and throttle from axis 4 inverted (right stick Y on our controller's Linux mapping), both through a `JOYSTICK_DEADZONE = 0.05` deadzone. Recording is gated by a condition part rather than a button: a frame is written only when the mode is `"user"` *and* `|throttle| > RECORD_THRESHOLD = 0.05`. A parked car would otherwise contribute a label that says "steering while not moving."
 
@@ -494,41 +492,41 @@ Bad demonstrations are worse than no demonstrations, so we made deleting them ea
 
 ---
 
-## Obstacle Logic
+## Obstacle Logic:
 
 A **red** pillar gets passed on its **right**, a **green** pillar on its **left**, and moving a pillar outside the 85 mm circle around its seat ends the round. After the third lap the traffic rules stop applying and the car has to find the parking bay.
 
-### The pillar decision is learned, not coded
+### The pillar decision is learned, not coded:
 
 Our `OCW` and `OCCW` models are trained on obstacle-course demonstration data, so red-right and green-left live in the network's weights instead of in an `if` statement. The color is already in the 160×120 RGB crop, the human driver supplies the correct side, and the network learns the mapping along with everything else about the track.
 
 The cost is that we can't inspect the decision. There's no line of code we can point at to prove the car will pass a red pillar on the right; it only runs where it does. Whether it's correct depends on how well our dataset covers the cases, so our testing has to be *scenario* tests rather than unit tests, and a pillar placement that never appears in training is a placement where behavior is undefined. The network is never trusted with anything exact: it doesn't decide when the run ends, where to stop, or how to park.
 
-### Getting out of the parking bay
+### Getting out of the parking bay:
 
 An obstacle round starts with the car inside the parking bay, so `obstacle_start_program()` runs first, called by `ObstacleStartController`. It takes no environmental feedback. The loop closes only on wheel rotation read back from the servo's own position register, since we placed the car in a bay of known size and there's nothing to sense. Clockwise steers right at `+65°` for 400 motor degrees, then left at `-50°` for another 400, then centers. Counter-clockwise isn't a mirror image but a separately tuned sequence: `-65°` for 430, `+60°` for 450, then two reverse moves of 1500 and 600 motor degrees at `-7°` and `+15°`. The bay sits differently relative to the first corner depending on direction, and backing up further keeps the car behind the first traffic sign.
 
 The maneuver runs synchronously inside the drive loop, which is how it gates the model: while it executes, the vehicle loop doesn't advance, so no prediction reaches the servos. The `DriveControlMux` part downstream is a `None`-safe pass-through and a hook for a future non-blocking startup controller. When the maneuver finishes, `restore_throttle_velocity_mode()` puts the drive motor back in velocity mode and the steering is centered. One thing we accept: the first command afterward comes from a prediction made on a pre-maneuver frame, stale by a single 50 ms cycle.
 
-### Ending the third lap in the right place
+### Ending the third lap in the right place:
 
 After the lap target confirms, the car keeps driving under model control for `OBSTACLE_RUN_FINISH_SECONDS = 1.0` more, a distance expressed as a time and hand-tuned at our current speed. Then `gyro_obstacle_finish_turn()` takes over.
 
 That correction is a closed loop on the same integrated yaw. It computes `270°` as `GYRO_TARGET_DEG − GYRO_OBSTACLE_FINISH_OFFSET_DEG`, takes the difference between the yaw where the model stopped and that figure, skips the turn if the difference is inside `GYRO_OBSTACLE_FINISH_TOLERANCE_DEG = 2.0`, and clips it at `GYRO_OBSTACLE_FINISH_MAX_TURN_DEG = 140.0` so a bad yaw estimate can't command an unbounded rotation. Then it steers `-50°` for a clockwise run or `+50°` for counter-clockwise at `0.35` throttle, polling yaw every 10 ms until the rotation is within 2 degrees of target or `15 s` runs out. This turn has its own `GYRO_FINAL_TURN_MULTIPLIER` so calibrating the lap threshold doesn't force the final correction early or late. The `finally` block stops the drive motor, re-centers the steering, and restores velocity mode, so parking always starts from the same actuator state.
 
-### Parking: five deterministic stages
+### Parking: five deterministic stages:
 
 Full marks need the car's projection entirely inside a bay 20 cm wide and parallel to within 2 cm of wheel-distance variance, and touching the magenta boundary elements zeroes the parking score. Two centimeters over the length of our car is a small angle, so parking is hand-written with its own sensors, calibration, and gains.
 
 `run_parking_sequence_after_obstacle()` runs the stages in order and lets a failure stop the run rather than pressing on blindly.
 
-**Stage 1, approach arc.** A full-left forward arc, currently skipped because `PARKING_SKIP_TO_C_TOF_STAGE = True` — the gyro finish turn already leaves the car in the pose it was written to produce. We keep it for the standalone parking program and for layouts where the finish turn is off.
+**Stage 1, approach arc:** A full-left forward arc, currently skipped because `PARKING_SKIP_TO_C_TOF_STAGE = True` — the gyro finish turn already leaves the car in the pose it was written to produce. We keep it for the standalone parking program and for layouts where the finish turn is off.
 
-**Stage 2, front wall approach (rangefinder C).** Drive forward at full speed with a `-1.0°` left trim until the forward-facing rangefinder reads `PARKING_FRONT_STOP_MM + PARKING_C_DISTANCE_LEEWAY_MM`, 5.7 cm, then stop. Capped by `PARKING_APPROACH_TIMEOUT = 12.0 s`, and a rangefinder invalid for `PARKING_SENSOR_INVALID_TIMEOUT = 0.8 s` aborts. This sets the reference for how far forward the car is.
+**Stage 2, front wall approach (rangefinder C):** Drive forward at full speed with a `-1.0°` left trim until the forward-facing rangefinder reads `PARKING_FRONT_STOP_MM + PARKING_C_DISTANCE_LEEWAY_MM`, 5.7 cm, then stop. Capped by `PARKING_APPROACH_TIMEOUT = 12.0 s`, and a rangefinder invalid for `PARKING_SENSOR_INVALID_TIMEOUT = 0.8 s` aborts. This sets the reference for how far forward the car is.
 
-**Stage 3, mirrored reverse arc.** Reverse at full lock for `PARKING_TURN_MOTOR_DEGREES = 720` motor degrees, steering `+50°` clockwise or `-50°` counter-clockwise. This is the only place the two directions differ in parking, and only in steering sign.
+**Stage 3, mirrored reverse arc:** Reverse at full lock for `PARKING_TURN_MOTOR_DEGREES = 720` motor degrees, steering `+50°` clockwise or `-50°` counter-clockwise. This is the only place the two directions differ in parking, and only in the steering sign.
 
-**Stage 3B, squaring up (rangefinders A and B).** A and B look at the same side wall from different points along the car, so their difference is proportional to how far the car is rotated relative to that wall. Reversing slowly while driving `|A − B|` to zero makes the car parallel, which is what the rules score. Details below.
+**Stage 3B, squaring up (rangefinders A and B):** A and B look at the same side wall from different points along the car, so their difference is proportional to how far the car is rotated relative to that wall. Reversing slowly while driving `|A − B|` to zero makes the car parallel, which is what the rules score. Details below.
 
 **Stage 4, wall follow (rangefinders A and B).** Creep forward holding a `PARKING_WALL_TARGET_MM` standoff, 32 cm, under weighted proportional control until the bay opening shows up. Details below.
 
@@ -536,9 +534,9 @@ Full marks need the car's projection entirely inside a bay 20 cm wide and parall
 
 ---
 
-## Algorithm Explanation
+## Algorithm Explanation:
 
-### Yaw estimation: why we integrate rate instead of using the sensor's yaw
+### Yaw estimation: why we integrate rate instead of using the sensor's yaw:
 
 The WT901 reports a yaw angle directly and we don't use it. Its yaw depends on the magnetometer, and the mat sits on a floor with an unknown amount of metal in it, next to other robots' motors. So we integrate the *rate* instead, on both processors, and cross-check them.
 
@@ -550,11 +548,11 @@ Sampling at 100 Hz rather than the 20 Hz drive-loop rate matters because yaw err
 
 If the stream goes stale for `PICO_GYRO_STALE_TIMEOUT_SECONDS = 1.50`, the sampler reopens the port, up to `PICO_AUTO_REOPEN_MAX_ATTEMPTS = 3` times with a `6.0 s` cooldown, soft-rebooting the Pico on the first two only. We raised the stale timeout from 0.6 s because one slow rangefinder read can open a gap that long, and the cooldown has to exceed the Pico's own startup time or a retry fires while the previous one is still initializing.
 
-### Wall alignment: proportional control with a settling test
+### Wall alignment: proportional control with a settling test:
 
 Stage 3B drives `|A − B|` to zero. Version 44 did it with bang-bang control, a fixed `±10°` whenever the difference passed the leeway, which with sensor latency and a slow servo guarantees a limit cycle: the car sweeps *through* balanced instead of settling on it. It could also confirm success mid-swing, since two frames go by in about 100 ms at 20 Hz while the car is still rotating.
 
-Steering is now proportional, so the correction shrinks as the error does:
+**Steering is now proportional, so the correction shrinks as the error does:**
 
 ```
 signed_diff = (A_filt - B_filt) - PARKING_AB_OFFSET_MM
@@ -566,7 +564,7 @@ steering    = -magnitude  if signed_diff > 0  else  +magnitude
 
 `PARKING_AB_ALIGN_KP_DEG_PER_MM = 2.0` is 2 degrees per centimeter in real units, so a 1 cm difference commands 2 degrees and the law saturates at 5 cm. Speed is two-phase: `-45%` while the difference is over `PARKING_AB_ALIGN_FINE_DIFF_MM = 4.0` (4 cm), then a `-25%` creep so the car can stop *on* balance instead of coasting through it. Angular error per frame of latency scales directly with speed, so slowing down was the cheapest accuracy improvement available.
 
-Confirmation needs three conditions:
+**Confirmation needs three conditions:**
 
 ```
 within_leeway = |signed_diff| <= 1.0 cm
@@ -582,9 +580,9 @@ Invalid readings get two different responses. A dropped *frame* holds the previo
 
 The stage is capped at `PARKING_AB_BALANCE_TIMEOUT = 15.0 s`, and on expiry it goes into the wall follow anyway (`PARKING_AB_BALANCE_TIMEOUT_CONTINUE_TO_PID = True`), since a partly aligned car can still earn partial parking points.
 
-### Wall following: two error terms with separate weights
+### Wall following: two error terms with separate weights:
 
-Stage 4 holds a fixed standoff while creeping toward the bay opening. The error has two physically different parts:
+**Stage 4 holds a fixed standoff while creeping toward the bay opening. The error has two physically different parts:**
 
 ```
 angle_term    = (A - B) - PARKING_AB_OFFSET_MM         # how rotated we are
@@ -603,7 +601,7 @@ Tuning order is written next to the constants: if the car weaves, lower the gain
 
 `PARKING_PID_KI` and `PARKING_PID_KD` both sit at **zero**. The angle term already provides the damping a wall follower needs, and at 7 Hz, integral action is what causes integral-induced oscillation. When they are turned on, the integrator is conditionally gated, frozen while the output is clamped so it can't wind up, and the derivative is filtered at `α = 0.30`. The output chain then applies a `0.2°` deadband, the `±30°` clamp, and a `150°/s` slew limit, since the servo can't follow a step anyway.
 
-### Degraded mode: estimating a missing sensor instead of substituting a constant
+### Degraded mode: estimating a missing sensor instead of substituting a constant:
 
 A VL53L0X returns nothing when it sits 35–45 degrees off a **black** wall, and the rules make every wall black, so single-sensor dropouts are normal here rather than a rare edge case.
 
@@ -618,11 +616,11 @@ A invalid  ->  A_est = B + last_good_angle
 
 The angle term then sits at the last real measurement instead of jumping, while the distance term keeps tracking the sensor that works. A held angle decays by `PARKING_PID_DEGRADED_ANGLE_DECAY = 0.85` per degraded frame, roughly half in 0.6 s at our frame rate, so a long dropout settles into pure distance-following rather than steering on a stale angle. Output is scaled by `PARKING_PID_DEGRADED_GAIN_SCALE = 0.6` and the clamp tightens from 30 degrees to `PARKING_PID_DEGRADED_MAX_STEER_DEG = 12.0`. Scaling the output rather than the gain keeps the controller's internal state clean, so recovery is immediate. If both sensors fail, the last filtered values hold for `PARKING_PID_INVALID_HOLD_SECONDS = 0.30` before the target substitution kicks in, and `0.8 s` of both-invalid aborts the stage.
 
-### Finding the bay: requiring a step, not just a small reading
+### Finding the bay: requiring a step, not just a small reading:
 
 "A is close" can't tell *found the bay* apart from *drifted into the wall I was following*, because A is small either way. One captured log came within a centimeter of the mistake: four frames in a row at A ≈ 21 cm with B ≈ 21 cm and no step between them, purely because the car had drifted 8 cm inward. The real trigger a moment later read A = 16.8 cm against B ≈ 21 cm, a genuine 4.2 cm step.
 
-So detection needs three conditions together:
+**So detection needs three conditions together:**
 
 ```
 raw A <= PARKING_PARK_TRIGGER_MM + PARKING_WALL_FIND_LEEWAY_MM   # 20.0 cm
@@ -632,7 +630,7 @@ both true for PARKING_WALL_FIND_CONFIRM_READINGS = 2 consecutive frames
 
 Entering a bay drops A while B still reads the wall, so a *difference* appears; drift moves both together. Detection uses **raw**, unfiltered A so there's no filter lag on the one measurement where stopping position depends on latency, and the two-frame confirmation costs about one frame of extra travel. A rejected candidate is logged as rejected, so a drift run looks different in the log from a run that never saw the bay.
 
-### Known limitations and next steps
+### Known limitations and next steps:
 
 | Area | Current limitation | Planned improvement |
 |---|---|---|
@@ -648,11 +646,11 @@ Entering a bay drops A while B still reads the wall, so a *difference* appears; 
 | Model calibration | The trained models compensate for whatever bias is in `DXL_STEER_CENTER_TICKS = 3060`, so it can't be corrected without retraining | Re-measure the mechanical center and retrain, as one combined change |
 
 
-# Systems Thinking & Engineering Decisions
+# Systems Thinking & Engineering Decisions:
 
-## Subsystem interactions
+## Subsystem interactions:
 
-The car has five subsystems: power, compute, control, sensing, and structure. Each one only talks to its neighbors, which is what lets us change one without re-testing all of them.
+**The car has five subsystems:** power, compute, control, sensing, and structure. Each one only talks to its neighbors, which is what lets us change one without re-testing all of them.
 
 ```
 POWER      4 rechargeable cells in 2 packs
@@ -682,7 +680,7 @@ SENSING   Pi Camera ──► Pi                    ACTUATION
 STRUCTURE  LEGO Technic chassis, steering linkage, sensor mounts
 ```
 
-### What each part does and why it's there
+### What each part does and why it is there:
 
 | Part | Role | Why this one |
 |---|---|---|
@@ -700,7 +698,7 @@ STRUCTURE  LEGO Technic chassis, steering linkage, sensor mounts
 
 <!-- Fill in before submission: cell chemistry, pack voltage, DC/DC output voltage and current rating, and the XL330-M288-T stall torque / no-load speed from the ROBOTIS e-manual. -->
 
-### Where subsystems are coupled
+### Where subsystems are coupled:
 
 These are the interactions that actually bit us, meaning a change on one side broke something on the other.
 
@@ -715,9 +713,9 @@ These are the interactions that actually bit us, meaning a change on one side br
 
 ---
 
-## Constraints, Trade-offs, and Risk Analysis
+## Constraints, Trade-offs, and Risk Analysis:
 
-### Constraints
+### Constraints:
 
 | Constraint | Source | What it forced |
 |---|---|---|
@@ -730,7 +728,7 @@ These are the interactions that actually bit us, meaning a change on one side br
 | Limited build hours | Us | We spent them collecting training data rather than tuning a color-threshold pipeline. |
 | One shared USB serial port on the Pico | Our design | Sequenced handoff between the gyro reader and the parking reader. |
 
-### Time budget
+### Time budget:
 
 Startup and the Pico health check happen before the round starts, so they don't count. Everything below does. The worst-case column is the sum of the actual timeout constants, so it's the slowest run the software can physically produce.
 
@@ -751,7 +749,7 @@ That leaves about 50 seconds of margin even if every single stage times out, whi
 
 <!-- Fill in before submission: measured wall-clock time for a clean obstacle run. -->
 
-### Trade-offs
+### Trade-offs:
 
 | Decision | What we gained | What we gave up |
 |---|---|---|
@@ -764,7 +762,7 @@ That leaves about 50 seconds of margin even if every single stage times out, whi
 | Generous parking timeouts | A slow stage still finishes and can still score | Slower worst-case runs |
 | Shared power rail | One pack, one switch, one converter | Motor current spikes reach the compute rail |
 
-### Risks
+### Risks:
 
 | Risk | How it shows up | Mitigation | Residual |
 |---|---|---|---|
@@ -779,31 +777,31 @@ That leaves about 50 seconds of margin even if every single stage times out, whi
 
 ---
 
-## Iteration cycles
+## Iteration cycles:
 
 We run four separate loops at different speeds, and keeping them separate is deliberate. A mechanical change shouldn't require a training run, and a gain change shouldn't require a rebuild.
 
-**Mechanical, minutes.** LEGO Technic is the whole reason this loop is fast. Changing the steering linkage, moving a sensor mount, or shifting the camera angle takes a few minutes and no fabrication. We rebuilt sensor mounts several times purely because the ToF sensors needed a better angle against the black walls, and none of those changes cost us a day.
+**Mechanical, minutes:** LEGO Technic is the whole reason this loop is fast. Changing the steering linkage, moving a sensor mount, or shifting the camera angle takes a few minutes and no fabrication. We rebuilt sensor mounts several times purely because the ToF sensors needed a better angle against the black walls, and none of those changes cost us a day.
 
-**Software, one change per version.** Every behavior change becomes a numbered version with the root cause written into the module docstring, so the file header reads as a list of diagnoses rather than features. Each new constant records the value that restores the old behavior, like `# Set to 1 for exact V44 stopping distance`, so at the field we can find which change broke something by editing constants, with no git and no laptop. Dead constants get labeled `NOT USED` with a note on what replaced them.
+**Software, one change per version:** Every behavior change becomes a numbered version with the root cause written into the module docstring, so the file header reads as a list of diagnoses rather than features. Each new constant records the value that restores the old behavior, like `# Set to 1 for exact V44 stopping distance`, so at the field we can find which change broke something by editing constants, with no git and no laptop. Dead constants get labeled `NOT USED` with a note on what replaced them.
 
-**Bench debugging, separate from driving.** `pico_tool.py` exists because debugging the serial link during a driving run is miserable. `--monitor` shows live frames, `--fix` escapes a stuck REPL, `--calib` measures the A/B sensor offset. Being able to test the link without loading TensorFlow turned a ten-minute cycle into a ten-second one.
+**Bench debugging, separate from driving:** `pico_tool.py` exists because debugging the serial link during a driving run is miserable. `--monitor` shows live frames, `--fix` escapes a stuck REPL, `--calib` measures the A/B sensor offset. Being able to test the link without loading TensorFlow turned a ten-minute cycle into a ten-second one.
 
-**Standalone, then integrate.** Parking was developed as its own program before it went into `manage`. That let us run parking a hundred times without a lap in front of it, and the stage numbering in the integrated code still matches the standalone version's. The two steering-center values are a direct product of this: the standalone program's calibration was the one that parked reliably, so we brought its numbers over rather than trusting the model's.
+**Standalone, then integrate:** Parking was developed as its own program before it went into `manage`. That let us run parking a hundred times without a lap in front of it, and the stage numbering in the integrated code still matches the standalone version's. The two steering-center values are a direct product of this: the standalone program's calibration was the one that parked reliably, so we brought its numbers over rather than trusting the model's.
 
-**Model, record and prune.** Drive, record, delete the bad parts, train, drive again. Triangle deletes the newest 100 records on the spot, so a botched lap never reaches training. Recording is gated on the mode being `"user"` and throttle above `0.05`, so a parked car can't teach the network to steer while stopped.
+**Model, record and prune:** Drive, record, delete the bad parts, train, drive again. Triangle deletes the newest 100 records on the spot, so a botched lap never reaches training. Recording is gated on the mode being `"user"` and throttle above `0.05`, so a parked car can't teach the network to steer while stopped.
 
 Our tuning rule across all four loops is the same: run it, capture the log, find the number that explains what we saw, change one thing, write down the old value.
 
 ---
 
-## Engineering Reasoning
+## Engineering Reasoning:
 
 A few ideas came up over and over while we built this, and they explain some choices that look odd on their own.
 
-### Where we used the model and where we didn't
+### Where we used the model and where we did not: 
 
-This competition has two different kinds of problem in it, and it took us a while to see that.
+This competition has two different kinds of problems in it, and it took us a while to see that.
 
 Driving a lap is fuzzy. There's no equation for how early to start a corner or how wide to swing around a green pillar, just better and worse answers, and a person can demonstrate a good one much faster than we can write one down. The inputs are fuzzy too, since the same corner looks different under different lighting. That fits a network trained on demonstration.
 
@@ -811,15 +809,15 @@ Parking isn't fuzzy at all. The rules hand us a number: parallel within 2 cm of 
 
 Splitting the run this way meant neither tool had to do something it's bad at. It also means the network never controls the car during a phase where a specific number has to be met: it doesn't decide when the run ends, where to stop, or how to park.
 
-### Why nothing quits on a fault
+### Why nothing quits on a fault:
 
 Most of our lost runs weren't caused by bad control. They were caused by something quietly not running, and by our own code not telling us which thing.
 
-The clearest example is the rangefinder that failed to initialize and ended the whole Pico program. The Pico printed one fatal message and went silent, while the IMU thread on the other core kept working fine. From the Pi that looks exactly like a dead gyro, so we spent time debugging the IMU when the actual problem was a ToF sensor. Now a failed sensor reports `-1` with status `9` forever and the frame keeps flowing, so the log tells us which sensor is gone.
+The clearest example is the rangefinder that failed to initialize and ended the whole Pico program. The Pico printed one fatal message and went silent, while the IMU thread on the other core kept working fine. From the Pi that looks exactly like a dead gyro, so we spent time debugging the IMU when the actual problem was a ToF sensor. Now a failed sensor reports `-1` with status `9` forever, and the frame keeps flowing, so the log tells us which sensor is gone.
 
 We apply that everywhere now. A subsystem that can't do its job reports the fault as *data* instead of raising or exiting, and the layer above decides how to degrade. Failing to start the Pico's second core streams `Angle=0.00` rather than quitting, a frame the parser can't trust gets rejected and counted so we can watch the reject rate, and the onboard LED blinks from both cores so we can tell from across the pit table whether `main.py` is running.
 
-### Measure instead of guessing
+### Measure instead of guessing:
 
 The run timer is the best example. It's tempting to scale it by speed setting, and we tried. At 90% the hand-timed value is 34.0 s, and dividing by the speed ratio predicts 30.6 s at 100%, but the real tuned value is 32.0 s. An 11% speed increase only bought a 6% time reduction, because throttle isn't pinned at full for a whole lap and cornering doesn't scale either. So auto-scaling is off and both measured pairs sit in a comment next to the constant.
 
@@ -827,7 +825,7 @@ The harder part is being honest about measurements we already have. One version 
 
 It's also why the controllers report statistics instead of just driving. A parking run prints tracking error, drift, steering distribution, degraded-frame share, and link integrity, then gives one ranked recommendation, since two symptoms with a shared cause would otherwise produce suggestions that contradict each other. Above 40% degraded frames it recommends nothing, because the data can't support a conclusion.
 
-### Picking things we could change later
+### Picking things we could change later:
 
 We're a small team on a fixed schedule, so how long a wrong decision takes to undo mattered a lot to us.
 
