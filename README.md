@@ -723,6 +723,7 @@ The same thinking shows up in the code. No `PARKING_*` constant is read by the m
 
 It's also why the `PARKING_*_MM` names are still wrong. They hold centimeter values, since the Pico divides by ten and the Pi never converts back. The math is consistent so nothing misbehaves, and a half-finished rename across two closed-loop controllers is exactly the kind of change that silently breaks one of them. It's scheduled for the off-season with a replayed log to confirm nothing moved.
 
-
 ## Conclusion: 
+
+This documentation covered the design and development of our WRO Future Engineers robot, from our first ideas to our final build. Along the way, we tested different solutions, made changes when needed, and improved each subsystem over time. We hope this gives a clear picture of how our robot was built and the reasoning behind the decisions we made.
 
