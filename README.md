@@ -21,7 +21,7 @@ This documentation describes the engineering decisions that led to our final rob
 
 ## Mobility & Mechanical Design
 
-Stuff
+Our mechanical design changed a lot as our robot continued to evolve. Every change had a purpose, whether it was improving stability, making maintenance easier, or finding a better place for a sensor or component. Even small adjustments made a noticeable difference, so we were constantly refining our design as we tested. This section explains how our robot came together and the decisions that shaped our final build.
 
 ### Our Robot:
 
@@ -36,64 +36,80 @@ IMAGE of the robot
 (Put the weight of our robot)
 
 **Torque/speed:**
-Our top speed is 0.11Km/h (1.9 meters per minute)
+Our top speed is 0.11Km/h (1.9 meters per minute).
 
 **Design trade-offs:**
+
 
 ### Materials:
 
 ##### 2 battery boxes (stores 2 each): 
-The battery holders and batteries are our power source for the robot; our holder has a switch to easily turn our robot on or off. Easy to take off or put on our robot.
+The battery holders and batteries are our power source for the robot; our holder has a switch to easily turn our robot on or off. Ultimately, it makes it easy to take off and put on our robot.
 
 <img width="200" height="200" alt="image" src="https://github.com/user-attachments/assets/7e7b7fcf-63da-480c-abd1-865ac9a1874e" />
 
 ##### 4 TAKEN 18 x 67mm 3.7V lithium Rechargeable batteries: 
-Our robot inputs 16 Volts of power. Rechargeable batteries for long-term use.
+Our robot inputs 16 Volts of power, which is provided by the batteries. We specifically used rechargeable batteries for long-term use.
 
 <img width="200" height="200" alt="image" src="https://github.com/user-attachments/assets/1ad300cd-df51-41d6-ae28-875abdadc6d0" />
 
-
 ##### DC/DC Converter:
-DC/DC Converter to give power to our Raspberry Pi, U2D2 controller, and Pi Pico.
+We used a DC/DC Converter to give power to our Raspberry Pi, U2D2 controller, and Pi Pico.
 
 <img width="250" height="200" alt="Screenshot 2026-08-02 144234" src="https://github.com/user-attachments/assets/75fcd9cf-2528-4111-bc38-31dceb744f4a" />
 
 ##### U2D2 Controller:
-U2D2 Controller so that our Raspberry Pi can control our DYNAMIXEL motors
+We used a U2D2 Controller to help our Raspberry Pi control our DYNAMIXEL motors.
+
+<img width="200" height="200" alt="image" src="https://github.com/user-attachments/assets/6aca7cd5-4a1e-4cfc-8b2b-a2a3bd084a4b" />
 
 ##### 2 DYNAMIXEL XL330-M288-T Motors:
-XL330-M288-T motors since it's a fast, reliable digital motors.
+We used XL330-M288-T motors since they are fast and reliable digital motors.
 
 <img width="250" height="250" alt="image" src="https://github.com/user-attachments/assets/139d5b1b-f1a3-46ba-8864-4f0d229e2664" />
 
 ##### Raspberry Pi 4 Model B:
-Raspberry Pi 4 Model B since it's a reliable and cost-effective computer.
+We used a Raspberry Pi 4 Model B since it's a reliable and cost-effective computer.
 
 <img width="300" height="200" alt="image" src="https://github.com/user-attachments/assets/5a6db2f7-57f1-40a3-a503-edfa3f40d65b" />
 
 ##### Raspberry Pi Sense HAT:
-Sense HAT to use their LED to print which model will be run during rounds; the joystick is used to select and run a model.
+We used a Sense HAT to use its LED to display which model will be run during rounds; the joystick is used to select and run a model.
+
+<img width="250" height="200" alt="image" src="https://github.com/user-attachments/assets/43966767-224a-426f-8f0c-72fe87341086" />
 
 ##### Raspberry Pi Pico:
-Pi Pico controls our ToF sensors and IMU Sensor without using the Raspberry Pi too much.
+Our Pi Pico controls our ToF sensors and IMU Sensor without the need to use our Raspberry Pi as much.
+
+<img width="220" height="100" alt="image" src="https://github.com/user-attachments/assets/26ddca6c-b5b0-45cc-9706-ffa26a43822d" />
 
 ##### 4 VL53L0X ToF Sensors:
 The ToF Sensors calculate the distance between the robot, wall, and obstacles. We placed one in the front, one in the back, and two on the right side of the robot. We placed two on the right side to make the robot's distance and rotation (angle) more accurate. We also used ToF sensors as distance sensors for parking and finding the parking boundaries
 
+<img width="210" height="235" alt="image" src="https://github.com/user-attachments/assets/ec1e90d0-f77f-40a9-a4e8-1b6375c943b2" />
+
 ##### WT901 9-axis IMU Sensor:
-IMU sensor for reliable readings of how many laps we ran; 360 degrees is one lap.
+We used an IMU sensor for reliable readings of how many laps we ran; 360 degrees is one lap.
+
+<img width="221" height="228" alt="image" src="https://github.com/user-attachments/assets/05115e78-15c6-4266-8165-4f530bb788c6" />
 
 ##### Raspberry Pi Camera Module v1 / OV5647:
-Pi Camera to train and run our AI models.
+We used a Pi Camera to train and run our AI models.
 
-##### USB to MicroUSB Wire
-USB to microUSB wire to have our Raspberry Pi control our Pi Pico.
+<img width="225" height="200" alt="image" src="https://github.com/user-attachments/assets/6d4e0e6f-ebba-4cce-bca5-354775610194" />
 
-##### USB to USB-C Wire
-USB to USB-C wire to have our Raspberry Pi control our U2D2 Controller.
+##### USB to MicroUSB Wire:
+We used a USB to microUSB wire to have our Raspberry Pi control our Pi Pico.
+
+<img width="200" height="200" alt="image" src="https://github.com/user-attachments/assets/770d2653-9e9b-4182-8fa0-aa26321709f8" />
+
+##### USB to USB-C Wire:
+We used a USB to USB-C wire to let our Raspberry Pi control our U2D2 Controller.
+
+<img width="250" height="200" alt="image" src="https://github.com/user-attachments/assets/e2e4f372-064c-4004-bc76-840630b00ac5" />
 
 ##### More wires:
-Many of the wires to connect our battery holders to the DC/DC converter, and our DC/DC converter to give power to the Raspberry Pi, U2D2 controller, and Pi Pico
+Many of the wires connect our battery holders to the DC/DC converter, and our DC/DC converter to give power to the Raspberry Pi, U2D2 controller, and Pi Pico
 
 #### LEGOs: 
 We used LEGOs as our base and to structure our robot. 
