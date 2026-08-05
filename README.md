@@ -34,6 +34,7 @@ Our mechanical design changed a lot as our robot continued to evolve. Every chan
 <img width="180" height="200" alt="image" src="https://github.com/user-attachments/assets/741f510f-9b76-47c0-923b-10c1b931aa97" />
 <img width="250" height="180" alt="image" src="https://github.com/user-attachments/assets/e2659a40-2cba-4dc2-b350-7042dd4df3dd" />
 
+
 **Torque/speed:**
 Our top speed is 0.11Km/h (1.9 meters per minute).
 
