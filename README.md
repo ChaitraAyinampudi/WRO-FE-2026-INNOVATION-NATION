@@ -25,11 +25,21 @@ Our mechanical design changed a lot as our robot continued to evolve. Every chan
 
 ### Our Robot:
 
-IMAGE of the robot 
+<img width="250" height="180" alt="image" src="https://github.com/user-attachments/assets/cac2cdb4-35b9-43e6-9859-0bae47c381e5" />
+<img width="250" height="180" alt="image" src="https://github.com/user-attachments/assets/a9869ded-9e11-4c4b-9fce-f18a8bed64f0" />
+<img width="250" height="180" alt="image" src="https://github.com/user-attachments/assets/44a3f4f1-b841-446f-b407-36297a5cc297" />
+<img width="250" height="180" alt="image" src="https://github.com/user-attachments/assets/b5613fcc-978f-47ea-925e-a5ac9a960972" />
+<img width="250" height="180" alt="image" src="https://github.com/user-attachments/assets/c71021d9-0e85-4396-b990-aa6baa47eebd" />
+<img width="250" height="180" alt="image" src="https://github.com/user-attachments/assets/c1e0a1f4-5925-457a-a0ee-b7dc0a0fd0cf" />
+<img width="250" height="180" alt="image" src="https://github.com/user-attachments/assets/4d1046c9-2cf6-47af-9bdd-18a69d5c9b76" />
+<img width="250" height="180" alt="image" src="https://github.com/user-attachments/assets/f3cf8397-ec54-4dcb-9c55-1c8d239abb2f" />
+<img width="250" height="180" alt="image" src="https://github.com/user-attachments/assets/a5e4ac54-6fe4-4378-a79b-9ce60742095b" />
 
 **Dimensions:** 
 
-(put the width x height of our robot)
+<img width="180" height="200" alt="image" src="https://github.com/user-attachments/assets/741f510f-9b76-47c0-923b-10c1b931aa97" />
+<img width="250" height="180" alt="image" src="https://github.com/user-attachments/assets/e2659a40-2cba-4dc2-b350-7042dd4df3dd" />
+
 
 **Weight:** 
 
@@ -38,7 +48,7 @@ IMAGE of the robot
 **Torque/speed:**
 Our top speed is 0.11Km/h (1.9 meters per minute).
 
-**Design trade-offs:**
+### Design trade-offs:
 
 **Chassis size:**	We kept the chassis compact to improve maneuverability, while leaving enough room for our electronics and wiring.
 
@@ -46,7 +56,7 @@ Our top speed is 0.11Km/h (1.9 meters per minute).
 
 **Weight distribution:**	Components were arranged to keep the robot balanced and improve stability while turning.
 
-**Structural design:**	We reinforced the chassis where needed while avoiding unnecessary weight.
+**Structural design:**	We reinforced the chassis where needed while avoiding unnecessary weight. If there is more weight, it would slow down our robot.
 
 ### Materials:
 
