@@ -2,7 +2,7 @@
 
 This file records the decisions, tests, failures and fixes from building the robot. It's kept in rough chronological order, and it includes the things that didn't work, because most of what's in the current code exists because of something that broke first.
 
-Version numbers below are the ones in each file's own header comment. The manage program's changelog runs from V6 through V45i.
+The manage program's version history runs from V1 through V18, and V18 is the current baseline. The standalone parking program has its own numbering, v1 through v14.
 
 ---
 
@@ -10,13 +10,13 @@ Version numbers below are the ones in each file's own header comment. The manage
 
 | Period | Focus |
 |---|---|
-| 2025 season | Previous robot: OpenCV color thresholds, ROI-based steering, ROS2 nodes, orange-line lap counting |
+| 2025 season | Previous robot: Used Build HAT and LEGO Inventor Motors. Used Sense HAT for Gyro Sensor. Used Donkey Car AI Models for both runs. |
 | June 2026 | Migrated from Build HAT motors to DYNAMIXEL XL330 + U2D2. Ported manage to the new motor stack. Camera view variants, tub recording, record deletion. |
 | Late June | Added the obstacle parking-exit routine and the `--driving-skip` variants. Set the camera view to 240×160 and moved data and models to `~/WRO_FE_2026`. |
 | July | Gyro lap detection. Long stretch of trying to make a Sense HAT gyro produce reliable lap counts, then giving up on it. |
 | July 29–31 | Finish-turn correction, forward vs backward, independent gyro thread, and integrating standalone parking into manage. |
 | August 1–2 | WT901 moved onto the Pico. Serial reliability work, no-input recovery, port conflicts, faster A/B alignment. |
-| August 3–4 | V45 series: found the real cause of the recurring gyro failures, then reworked both parking control loops. |
+| August 3–4 | V18: found the real cause of the recurring gyro failures, then reworked both parking control loops. |
 
 ---
 
@@ -44,39 +44,47 @@ Version numbers below are the ones in each file's own header comment. The manage
 
 | Version | Change |
 |---|---|
-| V6 | Camera-view variant |
-| V7 | Added `--driving-skip` and `--driving-view-skip` to bypass the parking-exit routine |
-| V13–V16 | Gyro debugging. Target moved to 1440°, then attempts at faster gyro updates |
-| V17 | Last full snapshot on the Sense HAT gyro architecture |
-| V18 | Obstacle finish correction: compute the finish turn from yaw error |
-| V19 | Finish turn done in reverse |
-| V20 | Reverse realignment, then forward correction |
-| V21 | Removed the reverse realignment. Forward-only correction from here on |
-| V24–V25 | `TypeError` on `now - gyro_target_first_seen` when the timestamp was still `None`. First fix attempt didn't hold |
-| V26 | Parking integration rebuilt on the V21 base, with parking constants near the top and the sequence starting at the C-ToF stage |
-| V27 | Parking enabled for both OCW and OCCW, with the pre-park reverse turn mirrored |
-| V28–V29 | Removed a separate degree-scale factor. Established that the timer is a lockout on the stop, not a stop condition |
-| V30 | Gyro reading moved to its own thread, independent of the 20 Hz drive loop |
-| V31 | Target settled near 360° |
-| V32 | Finish correction came up about 35° short in one test. Logged end yaw 414.2°, target−90 = 270.0°, calculated turn 144.2°, physical result about 142.5° |
-| V34 | Switched to the Pico WT901 stream |
-| V37 | Parser accepts `Angle, A, B, C, D` without requiring status fields |
-| V38 | Ctrl-C + Ctrl-D restart on run, gyro reset commands, auto-restart on no input |
-| V39 | Turned restart-on-run back off, because writing to a Pico that was already streaming broke it |
-| V40 | No-input recovery reopens the serial port first instead of resetting the gyro. Added serial-blocker cleanup |
-| V41 | Re-enabled Pico soft restart at startup after a manual Ctrl-C/Ctrl-D test worked reliably |
-| V42 | A/B alignment: 1.0 leeway, 10° steering, 70% speed, faster reads, smoothing, two good frames required, timeout continues into PID |
-| V43 | More serial startup and recovery adjustments |
-| V44 | Fixed the gyro link. Startup timeout 1.20 s → 8.00 s, kept DTR asserted, added byte/line/parse counters, raised the stale timeout |
-| V45 | Reworked both parking control loops. Eight separate root causes, listed below |
-| V45b | Found the actual cause of the recurring gyro failures: raw REPL |
-| V45c | Added the startup auto-fix. Angle weight 2.0 → 1.5 |
-| V45d | Follow speed 80 → 55 after measuring the real frame rate. Added the wall-find step requirement |
-| V45e | Reverted the A/B offset and the integral term. Fixed the parser |
-| V45f | Degraded-mode angle hold, and straighten-when-invalid during alignment |
-| V45g | Wall-follow gain 1.2 → 1.8 |
-| V45h | Parking steering center 3136 → 3126, offset 0.8 → 0.7 |
-| V45i | Worked out which constants scale with speed and which don't |
+| V1 | Ported from Build HAT to DYNAMIXEL XL330 + U2D2. Rebuilt the motor layer around position and velocity mode on one bus |
+| V2 | Camera-view driving variant |
+| V3 | Added `--driving-skip` and `--driving-view-skip` to bypass the parking-exit routine |
+| V4 | Gyro lap-stop debugging. Target moved to 1440°, then attempts at faster gyro updates |
+| V5 | Last full snapshot on the Sense HAT gyro architecture |
+| V6 | Obstacle finish correction: compute the finish turn from yaw error |
+| V7 | Finish turn tried in reverse, then reverse realignment followed by forward correction |
+| V8 | Removed the reverse realignment. Forward-only correction from here on |
+| V9 | Fixed a `TypeError` on `now - gyro_target_first_seen` when the timestamp was still `None` |
+| V10 | Parking integrated on the V8 base, with parking constants near the top and the sequence starting at the C-ToF stage |
+| V11 | Parking enabled for both OCW and OCCW, with the pre-park reverse turn mirrored |
+| V12 | Gyro reading moved to its own thread. Established that the timer is a lockout on the stop, not a stop condition |
+| V13 | Target settled near 360°. Finish correction measured about 35° short in one test |
+| V14 | Switched to the Pico WT901 stream. Parser accepts `Angle, A, B, C, D` without requiring status fields |
+| V15 | Pico restart and recovery. Reopen the port before resetting anything, and free serial blockers automatically |
+| V16 | A/B alignment reworked: faster reads, smoothing, smaller corrections, timeout continues into PID |
+| V17 | Fixed the gyro link. Startup timeout 1.20 s → 8.00 s, kept DTR asserted, added byte/line/parse counters, raised the stale timeout |
+| V18 | **Current baseline.** Raw REPL escape, both parking loops reworked, retuned gains, degraded-mode angle hold, wall-find step requirement |
+
+### What changed in V18
+
+V18 is the current baseline and it took the most work, so it's worth breaking out.
+
+**The recurring gyro failures finally had a cause.** Thonny, `mpremote`, `ampy` and `rshell` all leave MicroPython in the raw REPL, where Ctrl-D means "run the buffer" rather than "soft reboot." Every earlier handshake was a no-op against that state. The escape sequence is now Ctrl-C, Ctrl-C, Ctrl-B, Ctrl-D, and the reader listens for 2.00 s before writing anything so it can't disturb a Pico that's already streaming. A startup auto-fix runs the whole listen-escape-verify cycle before the camera and TensorFlow load.
+
+**Eight problems in the parking loops, found by replaying run logs:**
+
+1. `PARKING_STEERING_PROFILE_VELOCITY = 180` was defined but never written, so the servo kept the 80 LSB value from the last positional move
+2. Alignment was bang-bang, a fixed ±10° with no reduction near balance
+3. Alignment could confirm mid-swing, since two frames pass in about 100 ms
+4. A dropped ToF frame yanked the steering straight
+5. Raw sensor noise went into the PID unfiltered
+6. The gain was too high and the two error terms couldn't be tuned separately
+7. Invalid sensors faked an angle error, because a missing reading was replaced with the target distance
+8. The parking wall could be found by one spurious short reading
+
+**Retuned after that:** follow speed 80 → 55 once we measured the real frame rate, angle weight 2.0 → 1.5, wall-follow gain 1.2 → 1.8, parking steering center 3136 → 3126 with the offset 0.8 → 0.7.
+
+**Two changes reverted:** the A/B sensor offset went back to 0.0 and the integral term back to 0.0. Both are described below.
+
+**One thing settled:** which constants scale with `MAX_SPEED_PERCENT` and which don't. Only the two measured in seconds do.
 
 ### Standalone parking program
 
@@ -84,22 +92,22 @@ Parking was built as its own program first so it could be tested without driving
 
 | Version | Change |
 |---|---|
-| v22 | First full sequence: C approach, reverse turn, A/B balance, PID wall follow, entry |
-| v26 | Second turn read A and B, stopping when the difference reached 1–2 |
-| v27 | Separated the second-turn timeout from the sensor-invalid timeout |
-| v28 | Second turn became a fixed motor-degree move, with alignment as a separate reverse step |
-| v29 | Required the PID target to be reached twice before leaving |
-| v30 | Align backwards before the straight section |
-| v31 | Parking wall detected from B |
-| v32 | Second alignment moved forward. Longer wall search |
-| v33 | Alignment logic reversed |
-| v34 | Stop only when both the distance target and the alignment leeway were satisfied |
-| v35 | Removed the second alignment. PID only. Wall detection moved to A |
-| v36 | Alignment timeout continues into PID instead of failing the run |
-| v37 | Alignment skipped entirely |
-| v38 | Alignment restored, choosing forward or backward based on the size of the A/B difference |
+| v1 | First full sequence: C approach, reverse turn, A/B balance, PID wall follow, entry |
+| v2 | Second turn read A and B, stopping when the difference reached 1–2 |
+| v3 | Separated the second-turn timeout from the sensor-invalid timeout |
+| v4 | Second turn became a fixed motor-degree move, with alignment as a separate reverse step |
+| v5 | Required the PID target to be reached twice before leaving |
+| v6 | Align backwards before the straight section |
+| v7 | Parking wall detected from B |
+| v8 | Second alignment moved forward. Longer wall search |
+| v9 | Alignment logic reversed |
+| v10 | Stop only when both the distance target and the alignment leeway were satisfied |
+| v11 | Removed the second alignment. PID only. Wall detection moved to A |
+| v12 | Alignment timeout continues into PID instead of failing the run |
+| v13 | Alignment skipped entirely |
+| v14 | Alignment restored, choosing forward or backward based on the size of the A/B difference |
 
-v35 and v38 are the versions that parked reliably, which is why the integrated code uses their steering calibration rather than the model's.
+v11 and v14 are the versions that parked reliably, which is why the integrated code uses their steering calibration rather than the model's.
 
 ---
 
@@ -117,7 +125,7 @@ We test bottom-up, one layer at a time, because a bad calibration and a bad cont
 
 **Training data recorded then cleaned.** A frame is only recorded when the mode is `"user"` and throttle is above 0.05, so a stopped car can't teach the network to steer while stationary. Bad runs get deleted on the spot with the Triangle button, which removes the newest 100 records.
 
-**Log replay for tuning.** The controllers print statistics at the end of each parking stage, and most of the V45 changes came from replaying those logs rather than from watching the car.
+**Log replay for tuning.** The controllers print statistics at the end of each parking stage, and most of the V18 changes came from replaying those logs rather than from watching the car.
 
 ---
 
@@ -127,9 +135,9 @@ We test bottom-up, one layer at a time, because a bad calibration and a bad cont
 |---|---|---|---|
 | Pico stopped streaming | Manage reported no gyro while the Pico's LED was still blinking | Several causes, found one at a time | Three recovery layers: free the port, auto-fix before the model loads, in-reader escape with bounded reopen |
 | Gyro dead after using Thonny | Pico silent, `bytes=0` on the first probe, then `raw REPL; CTRL-B to exit` in the log | Thonny, `mpremote`, `ampy` and `rshell` leave MicroPython in the **raw** REPL. Ctrl-D means "soft reboot" in the friendly REPL but "run the buffer" in the raw one, so our handshake did nothing | Escape sequence is now Ctrl-C, Ctrl-C, **Ctrl-B**, Ctrl-D. This was the real cause behind months of intermittent gyro failures |
-| Every `print()` on the Pico discarded | Port opened fine, zero bytes received | V43 de-asserted DTR after opening. MicroPython on RP2 gates USB output on `tud_cdc_connected()`, which follows DTR | Force `dtr = True, rts = False` at every open |
+| Every `print()` on the Pico discarded | Port opened fine, zero bytes received | An earlier version de-asserted DTR after opening. MicroPython on RP2 gates USB output on `tud_cdc_connected()`, which follows DTR | Force `dtr = True, rts = False` at every open |
 | Writing to a healthy Pico broke it | Output stopped after we sent the handshake | MicroPython buffers `\x04` as ordinary stdin data, which blocked the Pico's read loop | Listen silently for 2.00 s first, only write if the port is provably silent |
-| Startup always timed out | Every run closed and reopened the port, killing `main.py` mid-init | V43 allowed 1.20 s for the first frame. The Pico needs about 1.7 s just to bring up three rangefinders | Startup timeout raised to 8.00 s. Stale timeout 0.60 → 1.50 s, reopen cooldown 1.50 → 6.00 s |
+| Startup always timed out | Every run closed and reopened the port, killing `main.py` mid-init | The version before V17 allowed 1.20 s for the first frame. The Pico needs about 1.7 s just to bring up three rangefinders | Startup timeout raised to 8.00 s. Stale timeout 0.60 → 1.50 s, reopen cooldown 1.50 → 6.00 s |
 | One dead sensor silenced everything | Pico printed one fatal line and went quiet, even though the IMU thread was fine | A failed VL53L0X init returned from `main()` | Each sensor initializes independently. A failure reports `-1` with status `9` forever and the frame keeps flowing |
 | A stray byte froze the Pico | All output stopped, no error | `sys.stdin.readline()` blocks until a newline arrives | `select.select(..., 0)` and read one character at a time |
 | Corrupted frames mid-line | Lines like `Angle=12.[WT901 READ ERROR 3]` | Both cores printing without a lock | `send_line()` takes a lock |
@@ -161,13 +169,13 @@ Two of these are worth recording because the reasoning that led to them looked s
 
 **Integral term enabled, then disabled.** A run log showed a steady one-way drift of about 8 cm across the run rather than a weave, and integral action is the textbook fix for a constant disturbance. But the drift was measured from those same corrupted readings, and an integrator on top of biased-low distances accumulates a one-way error and pins the steering hard over. That matched the reported "it just turned straight left." Both `PARKING_PID_KI` and `PARKING_PID_KD` are back at 0.0.
 
-**Restart-on-run, on in V38, off in V39, on in V41, replaced in V45b.** Whether to send a soft-reboot handshake at startup flipped back and forth for weeks, because the answer depended on which REPL state the Pico happened to be in. V45b resolved it by making the decision at runtime: listen first, escape only if silent.
+**Restart-on-run went on, off, and on again across V15, then got replaced in V18.** Whether to send a soft-reboot handshake at startup flipped back and forth for weeks, because the right answer depended on which REPL state the Pico happened to be in, and we couldn't see that from the Pi. V18 resolved it by deciding at runtime: listen first, escape only if the port is silent.
 
 ---
 
 ## Dead ends
 
-**Sense HAT gyro.** Roughly a month of work across V13–V33. It produced angle values that drifted while stationary and turns that didn't match reality. We kept adjusting the target instead of suspecting the sensor for too long.
+**Sense HAT gyro.** Roughly a month of work across V4 through V13. It produced angle values that drifted while stationary and turns that didn't match reality. We kept adjusting the target instead of suspecting the sensor for too long.
 
 **WT901 over UART.** An early version had the WT901 on GPIO1 using UART0 at 100 Hz. The current firmware uses I²C0 on GP4/GP5 instead.
 
@@ -175,7 +183,7 @@ Two of these are worth recording because the reasoning that led to them looked s
 
 **A wall-follow formula using an explicit angle estimate.** We sketched `(A + B) / 2 * 0.5 + Angle * Ka` with `Ka = abs(B - A) / 10`. The current weighted two-term PID does the same job with terms that can be tuned separately.
 
-**Reverse realignment before the finish turn.** Added in V19 and V20, removed in V21. Forward-only correction was simpler and no worse.
+**Reverse realignment before the finish turn.** Added in V7, removed in V8. Forward-only correction was simpler and no worse.
 
 ---
 
